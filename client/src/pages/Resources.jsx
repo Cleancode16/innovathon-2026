@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'https://innovathon-2026.onrender.com/api';
 
 // Unified soft color scheme for all subjects
 const subjectConfig = {

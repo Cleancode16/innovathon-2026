@@ -8,7 +8,7 @@ import {
   GripVertical, Minimize2, Maximize2, Trash2, ChevronDown
 } from 'lucide-react';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'https://innovathon-2026.onrender.com/api';
 
 /* ───────── quick-action chips ───────── */
 const quickActions = [

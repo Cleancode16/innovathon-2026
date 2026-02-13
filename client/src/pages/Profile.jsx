@@ -14,7 +14,7 @@ import {
   LineChart, Line, ResponsiveContainer
 } from 'recharts';
 
-const API_URL = 'http://localhost:3000/api';
+const API_URL = 'https://innovathon-2026.onrender.com/api';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 25 },

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://localhost:3000/api/auth';
+const API_URL = 'https://innovathon-2026.onrender.com/api/auth';
 
 // Register user
 export const register = async (userData) => {
