@@ -29,6 +29,105 @@ const userSchema = new mongoose.Schema({
       message: 'Role must be either student or faculty'
     }
   },
+  // Placement subjects - only for students
+  subjects: {
+    os: {
+      current: { type: Number, default: 0, min: 0, max: 100 },
+      history: [{ type: Number, min: 0, max: 100 }],
+      level: { 
+        type: String, 
+        enum: ['High', 'Medium', 'Low'], 
+        default: 'Low' 
+      },
+      conceptsCovered: [{ type: String }],
+      aiAnalysis: { type: String, default: '' },
+      attendance: {
+        totalClasses: { type: Number, default: 0, min: 0 },
+        attendedClasses: { type: Number, default: 0, min: 0 },
+        percentage: { type: Number, default: 0, min: 0, max: 100 }
+      }
+    },
+    cn: {
+      current: { type: Number, default: 0, min: 0, max: 100 },
+      history: [{ type: Number, min: 0, max: 100 }],
+      level: { 
+        type: String, 
+        enum: ['High', 'Medium', 'Low'], 
+        default: 'Low' 
+      },
+      conceptsCovered: [{ type: String }],
+      aiAnalysis: { type: String, default: '' },
+      attendance: {
+        totalClasses: { type: Number, default: 0, min: 0 },
+        attendedClasses: { type: Number, default: 0, min: 0 },
+        percentage: { type: Number, default: 0, min: 0, max: 100 }
+      }
+    },
+    dbms: {
+      current: { type: Number, default: 0, min: 0, max: 100 },
+      history: [{ type: Number, min: 0, max: 100 }],
+      level: { 
+        type: String, 
+        enum: ['High', 'Medium', 'Low'], 
+        default: 'Low' 
+      },
+      conceptsCovered: [{ type: String }],
+      aiAnalysis: { type: String, default: '' },
+      attendance: {
+        totalClasses: { type: Number, default: 0, min: 0 },
+        attendedClasses: { type: Number, default: 0, min: 0 },
+        percentage: { type: Number, default: 0, min: 0, max: 100 }
+      }
+    },
+    oops: {
+      current: { type: Number, default: 0, min: 0, max: 100 },
+      history: [{ type: Number, min: 0, max: 100 }],
+      level: { 
+        type: String, 
+        enum: ['High', 'Medium', 'Low'], 
+        default: 'Low' 
+      },
+      conceptsCovered: [{ type: String }],
+      aiAnalysis: { type: String, default: '' },
+      attendance: {
+        totalClasses: { type: Number, default: 0, min: 0 },
+        attendedClasses: { type: Number, default: 0, min: 0 },
+        percentage: { type: Number, default: 0, min: 0, max: 100 }
+      }
+    },
+    dsa: {
+      current: { type: Number, default: 0, min: 0, max: 100 },
+      history: [{ type: Number, min: 0, max: 100 }],
+      level: { 
+        type: String, 
+        enum: ['High', 'Medium', 'Low'], 
+        default: 'Low' 
+      },
+      conceptsCovered: [{ type: String }],
+      aiAnalysis: { type: String, default: '' },
+      attendance: {
+        totalClasses: { type: Number, default: 0, min: 0 },
+        attendedClasses: { type: Number, default: 0, min: 0 },
+        percentage: { type: Number, default: 0, min: 0, max: 100 }
+      }
+    },
+    qa: {
+      current: { type: Number, default: 0, min: 0, max: 100 },
+      history: [{ type: Number, min: 0, max: 100 }],
+      level: { 
+        type: String, 
+        enum: ['High', 'Medium', 'Low'], 
+        default: 'Low' 
+      },
+      conceptsCovered: [{ type: String }],
+      aiAnalysis: { type: String, default: '' },
+      attendance: {
+        totalClasses: { type: Number, default: 0, min: 0 },
+        attendedClasses: { type: Number, default: 0, min: 0 },
+        percentage: { type: Number, default: 0, min: 0, max: 100 }
+      }
+    }
+  },
   createdAt: {
     type: Date,
     default: Date.now
