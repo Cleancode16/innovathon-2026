@@ -2,6 +2,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const path = require('path');
 const authRoutes = require('./routes/auth');
 const marksRoutes = require('./routes/marks');
 const testRoutes = require('./routes/tests');
@@ -11,7 +12,7 @@ const timetableRoutes = require('./routes/timetable');
 const resourcesRoutes = require('./routes/resources');
 
 // Load environment variables
-dotenv.config();
+dotenv.config({ path: path.join(__dirname, '.env') });
 
 // Create Express app
 const app = express();

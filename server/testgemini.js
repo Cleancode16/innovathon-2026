@@ -4,7 +4,7 @@ const { google } = require('@ai-sdk/google');
 const { generateText } = require('ai');
 
 // IMPORTANT: Use same model as your file
-const model = google('gemini-1.5-flash-8b');
+const model = google('gemini-2.5-flash-lite');
 
 
 async function test() {

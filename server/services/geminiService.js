@@ -88,7 +88,7 @@ Return ONLY a JSON array of 4 topic names, nothing else.
 Example format: ["Topic 1", "Topic 2", "Topic 3", "Topic 4"]`;
 
     const { text } = await generateText({
-      model: google('gemini-1.5-flash-8b'),
+      model: google('gemini-2.5-flash-lite'),
       prompt: prompt,
       temperature: 0.7,
     });
@@ -137,7 +137,7 @@ Provide a concise, actionable performance analysis (max 150 words) covering:
 Be encouraging but honest. Focus on actionable insights.`;
 
     const { text } = await generateText({
-      model: google('gemini-1.5-flash-8b'),
+      model: google('gemini-2.5-flash-lite'),
       prompt: prompt,
       temperature: 0.7,
       maxTokens: 300,
@@ -271,7 +271,7 @@ Based on the trend, predict likely performance on the next test and what score t
 Be specific to ${subjectInfo.name} concepts. Use encouraging but honest tone.`;
 
     const { text } = await generateText({
-      model: google('gemini-1.5-flash-8b'),
+      model: google('gemini-2.5-flash-lite'),
       prompt,
       temperature: 0.7,
       maxTokens: 500,
@@ -331,7 +331,7 @@ Format: ["analysis for test 1", "analysis for test 2", "analysis for test 3", "a
 Each analysis should be 150-200 words. Be specific to ${subjectInfo.name}. Use encouraging but honest tone.`;
 
     const { text } = await generateText({
-      model: google('gemini-1.5-flash-8b'),
+      model: google('gemini-2.5-flash-lite'),
       prompt,
       temperature: 0.7,
       maxTokens: 2000,
@@ -448,7 +448,7 @@ ${historyText}`;
     // Use @google/generative-ai SDK directly for chat
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash-8b',
+      model: 'gemini-2.5-flash-lite',
       systemInstruction: systemPrompt 
     });
 
@@ -552,7 +552,7 @@ RULES:
 
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash-8b',
+      model: 'gemini-2.5-flash-lite',
       generationConfig: { responseMimeType: 'application/json' }
     });
 
@@ -657,7 +657,7 @@ const generateTimetable = async (view, data) => {
   try {
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-1.5-flash-8b',
+      model: 'gemini-2.5-flash-lite',
       generationConfig: {
         responseMimeType: 'application/json',
         temperature: 0.7
@@ -981,7 +981,7 @@ IMPORTANT RULES:
 - Return ONLY valid JSON, no markdown formatting`;
 
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
 
     const result = await withRateLimitRetry(() => model.generateContent(prompt));
     const text = result.response.text().trim();
