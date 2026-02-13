@@ -72,13 +72,9 @@ function buildStudentContext(user, tests) {
       const level = subject.level || 'N/A';
       const history = subject.history || [];
       const avg = history.length > 0 ? (history.reduce((a, b) => a + b, 0) / history.length).toFixed(1) : 'N/A';
-      const attendance = subject.attendance || {};
-      const attPct = attendance.percentage != null ? `${attendance.percentage}%` : 'N/A';
-
       context += `\n📚 ${name} (${key.toUpperCase()}):\n`;
       context += `   Current Score: ${current}/100 | Level: ${level} | Average: ${avg}\n`;
       context += `   Test History: [${history.join(', ')}]\n`;
-      context += `   Attendance: ${attPct} (${attendance.attendedClasses || 0}/${attendance.totalClasses || 0} classes)\n`;
 
       if (subject.conceptsCovered && subject.conceptsCovered.length > 0) {
         context += `   Topics Covered: ${subject.conceptsCovered.join(', ')}\n`;

@@ -1,24 +1,25 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../services/authService';
-import { User, Mail, Shield, BookOpen, TrendingUp, Award, Loader2 } from 'lucide-react';
-import axios from 'axios';
-import ChatBot from '../components/Chatbot';
+import { motion } from 'framer-motion';
 import {
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  LineChart, Line, ResponsiveContainer, PieChart, Pie, Cell
-} from 'recharts';
+  Sparkles, MapPin, Calendar, BookMarked, User, ChevronRight,
+  BarChart3, GraduationCap, BookOpen, Target, Zap, Menu, X, LogOut,
+  ArrowRight, TrendingUp, Award, Brain, CheckCircle2
+} from 'lucide-react';
+import ChatBot from '../components/Chatbot';
 
-const API_URL = 'http://localhost:3000/api';
+const fadeUp = {
+  hidden: { opacity: 0, y: 25 },
+  visible: (i = 0) => ({ opacity: 1, y: 0, transition: { delay: i * 0.08, duration: 0.45, ease: 'easeOut' } })
+};
+
+const stagger = { visible: { transition: { staggerChildren: 0.08 } } };
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [seededTests, setSeededTests] = useState(null);
-  const [loadingTests, setLoadingTests] = useState(true);
-
-  const SUBJECT_KEYS = ['os', 'cn', 'dbms', 'oops', 'dsa', 'qa'];
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     const currentUser = getCurrentUser();
@@ -26,474 +27,451 @@ const Dashboard = () => {
       navigate('/login');
     } else {
       setUser(currentUser);
-      // Fetch seeded tests from the Test collection
-      if (currentUser.role === 'student' && currentUser._id) {
-        fetchSeededTests(currentUser._id, currentUser);
-      } else {
-        setLoadingTests(false);
-      }
     }
   }, [navigate]);
 
-  const fetchSeededTests = async (userId, currentUser) => {
-    setLoadingTests(true);
-    try {
-      let response = await axios.get(`${API_URL}/tests/${userId}`);
-      let grouped = response.data.success ? response.data.data.grouped : {};
-
-      // If no tests exist, trigger a reseed and fetch again
-      if (!grouped || Object.keys(grouped).length === 0) {
-        console.log('No tests found, triggering reseed...');
-        try {
-          const reseedRes = await axios.post(`${API_URL}/tests/${userId}/reseed`);
-          if (reseedRes.data.success) {
-            grouped = reseedRes.data.data.grouped;
-            // If reseed returned updated subjects, use those
-            if (reseedRes.data.data.subjects) {
-              currentUser = { ...currentUser, subjects: reseedRes.data.data.subjects };
-            }
-          }
-        } catch (reseedErr) {
-          console.error('Reseed failed:', reseedErr);
-        }
-      }
-
-      if (grouped && Object.keys(grouped).length > 0) {
-        setSeededTests(grouped);
-
-        // Update user state & localStorage with fresh computed subject data
-        const freshSubjects = {};
-        for (const key of SUBJECT_KEYS) {
-          const userSubj = currentUser.subjects?.[key];
-          const dbTests = grouped?.[key]?.tests;
-          const scores = dbTests ? dbTests.map(t => t.marks) : (userSubj?.history || []);
-          const current = scores.length > 0 ? scores[scores.length - 1] : (userSubj?.current || 0);
-          const avg = scores.length > 0
-            ? parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1))
-            : 0;
-          const level = current >= 75 ? 'High' : current >= 40 ? 'Medium' : 'Low';
-
-          freshSubjects[key] = {
-            current,
-            history: scores,
-            level,
-            average: avg,
-            conceptsCovered: userSubj?.conceptsCovered || [],
-            aiAnalysis: userSubj?.aiAnalysis || '',
-            attendance: userSubj?.attendance || { totalClasses: 0, attendedClasses: 0, percentage: 0 }
-          };
-        }
-
-        // Update user state with fresh subjects
-        const updatedUser = { ...currentUser, subjects: freshSubjects };
-        setUser(updatedUser);
-
-        // Persist to localStorage so other pages (Roadmap, Timetable) also get fresh data
-        localStorage.setItem('user', JSON.stringify(updatedUser));
-      }
-    } catch (err) {
-      console.error('Failed to fetch seeded tests:', err);
-    } finally {
-      setLoadingTests(false);
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    navigate('/login');
   };
-
-  // Compute fresh subjects data merging Test API data with user.subjects
-  const subjectsData = useMemo(() => {
-    if (!user) return null;
-    const merged = {};
-    for (const key of SUBJECT_KEYS) {
-      const userSubj = user.subjects?.[key];
-      const dbTests = seededTests?.[key]?.tests;
-      const scores = dbTests ? dbTests.map(t => t.marks) : (userSubj?.history || []);
-      const current = scores.length > 0 ? scores[scores.length - 1] : (userSubj?.current || 0);
-      const avg = scores.length > 0
-        ? parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1))
-        : 0;
-      const level = current >= 75 ? 'High' : current >= 40 ? 'Medium' : 'Low';
-
-      merged[key] = {
-        current,
-        history: scores,
-        level,
-        average: avg,
-        conceptsCovered: userSubj?.conceptsCovered || [],
-        aiAnalysis: userSubj?.aiAnalysis || '',
-        attendance: userSubj?.attendance || { totalClasses: 0, attendedClasses: 0, percentage: 0 }
-      };
-    }
-    return merged;
-  }, [user, seededTests]);
 
   if (!user) return null;
 
-  // Subject name mapping
-  const subjectNames = {
-    os: 'Operating System',
-    cn: 'Computer Networks',
-    dbms: 'Database Management Systems',
-    oops: 'Object-Oriented Programming',
-    dsa: 'Data Structures & Algorithms',
-    qa: 'Quantitative Aptitude'
-  };
-
-  // Get performance level badge color
-  const getLevelColor = (level) => {
-    switch (level) {
-      case 'High': return 'bg-green-100 text-green-800 border-green-200';
-      case 'Medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'Low': return 'bg-red-100 text-red-800 border-red-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  const quickLinks = [
+    {
+      title: 'My Profile',
+      description: 'View your scores, charts & detailed performance analytics',
+      icon: User,
+      route: '/profile',
+      gradient: 'from-purple-500 to-purple-700',
+      iconBg: 'bg-purple-50',
+      iconColor: 'text-purple-600',
+      hoverBorder: 'hover:border-purple-300'
+    },
+    {
+      title: 'Roadmap',
+      description: 'AI-generated personalised study roadmap for each subject',
+      icon: MapPin,
+      route: '/roadmap',
+      gradient: 'from-emerald-500 to-teal-600',
+      iconBg: 'bg-emerald-50',
+      iconColor: 'text-emerald-600',
+      hoverBorder: 'hover:border-emerald-300'
+    },
+    {
+      title: 'Timetable',
+      description: 'Smart AI-powered study schedule tailored to your needs',
+      icon: Calendar,
+      route: '/timetable',
+      gradient: 'from-orange-500 to-red-500',
+      iconBg: 'bg-orange-50',
+      iconColor: 'text-orange-600',
+      hoverBorder: 'hover:border-orange-300'
+    },
+    {
+      title: 'Resources',
+      description: 'Curated videos, books, practice links & cheat sheets',
+      icon: BookMarked,
+      route: '/resources',
+      gradient: 'from-pink-500 to-rose-600',
+      iconBg: 'bg-pink-50',
+      iconColor: 'text-pink-600',
+      hoverBorder: 'hover:border-pink-300'
     }
-  };
+  ];
 
-  // Calculate average score from merged subjects data
-  const calculateAverage = (subjects) => {
-    if (!subjects) return 0;
-    const vals = Object.values(subjects);
-    if (vals.length === 0) return 0;
-    const sum = vals.reduce((acc, s) => acc + (s.current || 0), 0);
-    return (sum / vals.length).toFixed(2);
-  };
+  const tips = [
+    { 
+      icon: Target, 
+      text: 'Check your Profile to see detailed score breakdowns & charts', 
+      color: 'text-purple-600', 
+      bg: 'bg-purple-50',
+      borderColor: 'border-purple-200'
+    },
+    { 
+      icon: Zap, 
+      text: 'Use the Roadmap to get a personalised study plan from AI', 
+      color: 'text-emerald-600', 
+      bg: 'bg-emerald-50',
+      borderColor: 'border-emerald-200'
+    },
+    { 
+      icon: BookOpen, 
+      text: 'Resources tab has real YouTube links, books & cheat sheets', 
+      color: 'text-orange-600', 
+      bg: 'bg-orange-50',
+      borderColor: 'border-orange-200'
+    }
+  ];
+
+  const features = [
+    {
+      icon: BarChart3,
+      title: 'Performance Analytics',
+      description: 'Track your progress with detailed charts and insights',
+      color: 'text-purple-600',
+      bg: 'bg-purple-50'
+    },
+    {
+      icon: Brain,
+      title: 'AI-Powered Insights',
+      description: 'Get personalized recommendations based on your data',
+      color: 'text-emerald-600',
+      bg: 'bg-emerald-50'
+    },
+    {
+      icon: Award,
+      title: 'Goal Tracking',
+      description: 'Set and achieve your academic milestones',
+      color: 'text-orange-600',
+      bg: 'bg-orange-50'
+    }
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Welcome Card */}
-        <div className="bg-white rounded-lg shadow p-6 mb-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            Welcome, {user.name}!
-          </h2>
-          <p className="text-gray-600">
-            You have successfully logged in to your account.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* User Info Card */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Information</h3>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center">
-                  <User className="w-5 h-5 text-indigo-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Name</p>
-                  <p className="text-gray-900 font-medium">{user.name}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                  <Mail className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Email</p>
-                  <p className="text-gray-900 font-medium">{user.email}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-500">Role</p>
-                  <p className="text-gray-900 font-medium capitalize">{user.role}</p>
-                </div>
-              </div>
+    <div className="min-h-screen bg-gradient-to-br from-neutral-50 via-white to-lime-50/20">
+      {/* Navigation Bar */}
+      <motion.nav
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="fixed top-0 left-0 right-0 z-50 bg-lime-300 backdrop-blur-sm border-b border-black/5"
+      >
+        <div className="max-w-7xl mx-auto px-6 lg:px-12 flex items-center justify-between h-20">
+          <motion.div 
+            className="flex items-center gap-3 cursor-pointer"
+            onClick={() => navigate('/')}
+            whileHover={{ scale: 1.02 }}
+          >
+            <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center">
+              <GraduationCap className="w-6 h-6 text-lime-300" />
             </div>
+            <span className="text-2xl font-bold text-black">AcadBoost</span>
+          </motion.div>
+
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-6">
+            <button 
+              onClick={() => navigate('/dashboard')}
+              className="text-black font-semibold hover:text-neutral-700 transition-colors"
+            >
+              Dashboard
+            </button>
+            <button 
+              onClick={() => navigate('/profile')}
+              className="text-black font-semibold hover:text-neutral-700 transition-colors"
+            >
+              Profile
+            </button>
+            <button 
+              onClick={() => navigate('/roadmap')}
+              className="text-black font-semibold hover:text-neutral-700 transition-colors"
+            >
+              Roadmap
+            </button>
+            <button 
+              onClick={() => navigate('/timetable')}
+              className="text-black font-semibold hover:text-neutral-700 transition-colors"
+            >
+              Timetable
+            </button>
+            <motion.button
+              onClick={handleLogout}
+              className="bg-black text-lime-300 px-6 py-2.5 rounded-full font-semibold hover:bg-neutral-800 transition-colors flex items-center gap-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </motion.button>
           </div>
 
-          {/* Statistics Cards - Only for Students */}
-          {user.role === 'student' && subjectsData && (
-            <>
-              <div className="bg-linear-to-br from-indigo-500 to-purple-600 rounded-lg shadow p-6 text-white">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">Average Score</h3>
-                  <TrendingUp className="w-5 h-5 opacity-75" />
-                </div>
-                <p className="text-4xl font-bold">{calculateAverage(subjectsData)}%</p>
-                <p className="text-sm opacity-75 mt-2">Across all subjects</p>
-              </div>
-
-              <div className="bg-linear-to-br from-green-500 to-teal-600 rounded-lg shadow p-6 text-white">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-sm font-medium opacity-90">Total Subjects</h3>
-                  <BookOpen className="w-5 h-5 opacity-75" />
-                </div>
-                <p className="text-4xl font-bold">{Object.keys(subjectsData).length}</p>
-                <p className="text-sm opacity-75 mt-2">Academic subjects</p>
-              </div>
-            </>
-          )}
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden w-10 h-10 bg-black rounded-full flex items-center justify-center"
+          >
+            {mobileMenuOpen ? <X className="w-5 h-5 text-lime-300" /> : <Menu className="w-5 h-5 text-lime-300" />}
+          </button>
         </div>
 
-        {/* Loading indicator while fetching test data */}
-        {user.role === 'student' && loadingTests && (
-          <div className="flex items-center justify-center py-16">
-            <div className="text-center">
-              <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mx-auto mb-3" />
-              <p className="text-gray-500 text-sm">Loading your test scores...</p>
+        {/* Mobile Menu */}
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="md:hidden bg-lime-300 border-t border-black/10"
+          >
+            <div className="px-6 py-4 space-y-3">
+              <button onClick={() => navigate('/dashboard')} className="w-full text-left text-black px-4 py-3 rounded-xl font-semibold hover:bg-black/5">
+                Dashboard
+              </button>
+              <button onClick={() => navigate('/profile')} className="w-full text-left text-black px-4 py-3 rounded-xl font-semibold hover:bg-black/5">
+                Profile
+              </button>
+              <button onClick={() => navigate('/roadmap')} className="w-full text-left text-black px-4 py-3 rounded-xl font-semibold hover:bg-black/5">
+                Roadmap
+              </button>
+              <button onClick={() => navigate('/timetable')} className="w-full text-left text-black px-4 py-3 rounded-xl font-semibold hover:bg-black/5">
+                Timetable
+              </button>
+              <button onClick={handleLogout} className="w-full bg-black text-lime-300 px-4 py-3 rounded-xl font-semibold">
+                Logout
+              </button>
             </div>
+          </motion.div>
+        )}
+      </motion.nav>
+
+      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pt-28">
+        {/* Welcome Banner */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="bg-white rounded-3xl p-8 md:p-10 relative overflow-hidden mb-10 shadow-lg border-2 border-neutral-200"
+        >
+          {/* Subtle Background Decoration */}
+          <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
+            <motion.div 
+              className="absolute -top-10 -right-10 w-40 h-40 bg-lime-200 rounded-full blur-3xl"
+              animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+              transition={{ duration: 8, repeat: Infinity }}
+            />
+            <motion.div 
+              className="absolute -bottom-10 -left-10 w-32 h-32 bg-emerald-200 rounded-full blur-3xl"
+              animate={{ scale: [1, 1.3, 1], opacity: [0.2, 0.4, 0.2] }}
+              transition={{ duration: 10, repeat: Infinity, delay: 1 }}
+            />
           </div>
+
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+              <motion.div
+                animate={{ rotate: [0, 15, -15, 0] }}
+                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
+                className="w-14 h-14 bg-gradient-to-br from-lime-300 to-emerald-300 rounded-2xl flex items-center justify-center shadow-lg"
+              >
+                <Sparkles className="w-7 h-7 text-black" />
+              </motion.div>
+              <div>
+                <span className="text-neutral-500 text-sm font-semibold block">Welcome back</span>
+                <span className="text-neutral-400 text-xs">Ready to continue learning</span>
+              </div>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold mb-3 text-black flex items-center gap-3">
+              Hello, {user.name}!
+              <motion.div
+                animate={{ rotate: [0, 14, -8, 14, -4, 10, 0] }}
+                transition={{ duration: 2.5, repeat: Infinity, repeatDelay: 3 }}
+              >
+                <CheckCircle2 className="w-10 h-10 text-lime-500" />
+              </motion.div>
+            </h1>
+            <p className="text-neutral-600 text-base md:text-lg max-w-2xl">
+              {user.role === 'student'
+                ? 'Your academic dashboard is ready. Explore your tools below to boost your performance and achieve your goals.'
+                : 'Welcome to the faculty portal. Your dashboard tools are below.'
+              }
+            </p>
+
+            {/* Quick Stats */}
+            {user.role === 'student' && (
+              <div className="grid grid-cols-3 gap-4 mt-8">
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-2xl p-5 border-2 border-purple-200"
+                >
+                  <TrendingUp className="w-6 h-6 text-purple-600 mb-2" />
+                  <p className="text-3xl font-bold text-purple-900">6</p>
+                  <p className="text-xs text-purple-600 font-semibold">Subjects</p>
+                </motion.div>
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4 }}
+                  className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-5 border-2 border-emerald-200"
+                >
+                  <BarChart3 className="w-6 h-6 text-emerald-600 mb-2" />
+                  <p className="text-3xl font-bold text-emerald-900">12</p>
+                  <p className="text-xs text-emerald-600 font-semibold">Tests Taken</p>
+                </motion.div>
+                <motion.div 
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5 }}
+                  className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl p-5 border-2 border-orange-200"
+                >
+                  <Award className="w-6 h-6 text-orange-600 mb-2" />
+                  <p className="text-3xl font-bold text-orange-900">4</p>
+                  <p className="text-xs text-orange-600 font-semibold">Milestones</p>
+                </motion.div>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Quick Navigation Cards */}
+        {user.role === 'student' && (
+          <motion.div
+            initial="hidden"
+            animate="visible"
+            variants={stagger}
+            className="mb-10"
+          >
+            <h2 className="text-2xl font-bold text-black mb-6 flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-lime-300 to-emerald-300 rounded-lg flex items-center justify-center">
+                <Target className="w-5 h-5 text-black" />
+              </div>
+              Quick Access
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              {quickLinks.map((link, i) => {
+                const Icon = link.icon;
+                return (
+                  <motion.button
+                    key={link.route}
+                    variants={fadeUp}
+                    custom={i}
+                    whileHover={{ y: -6, scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => navigate(link.route)}
+                    className={`bg-white rounded-2xl border-2 border-neutral-200 ${link.hoverBorder} p-6 shadow-md hover:shadow-xl transition-all text-left group`}
+                  >
+                    <div className="flex items-start justify-between mb-4">
+                      <motion.div 
+                        whileHover={{ scale: 1.1, rotate: 5 }}
+                        className={`w-14 h-14 ${link.iconBg} rounded-2xl flex items-center justify-center shadow-md border-2 border-${link.iconColor.replace('text-', '')}/20`}
+                      >
+                        <Icon className={`w-7 h-7 ${link.iconColor}`} />
+                      </motion.div>
+                      <div className="w-10 h-10 bg-neutral-50 rounded-xl flex items-center justify-center group-hover:bg-black transition-all">
+                        <ChevronRight className="w-5 h-5 text-neutral-400 group-hover:text-lime-300 transition-colors" />
+                      </div>
+                    </div>
+                    <h3 className="text-xl font-bold text-black mb-2 group-hover:text-neutral-700 transition-colors">
+                      {link.title}
+                    </h3>
+                    <p className="text-sm text-neutral-600 leading-relaxed">
+                      {link.description}
+                    </p>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </motion.div>
         )}
 
-        {/* Charts Section - Only for Students */}
-        {user.role === 'student' && !loadingTests && subjectsData && (() => {
-          const COLORS = ['#6366f1', '#10b981', '#8b5cf6', '#f97316', '#ef4444', '#06b6d4'];
-          const subjectKeys = SUBJECT_KEYS;
-
-          // Build chart data from merged subjectsData
-          const barData = subjectKeys.map(key => {
-            const s = subjectsData[key];
-            return {
-              name: subjectNames[key]?.split(' ').map(w => w[0]).join('') || key.toUpperCase(),
-              fullName: subjectNames[key],
-              current: s.current || 0,
-              average: s.average || 0,
-              highest: s.history.length ? Math.max(...s.history) : 0,
-              lowest: s.history.length ? Math.min(...s.history) : 0,
-            };
-          });
-
-          const radarData = subjectKeys.map(key => {
-            const s = subjectsData[key];
-            return {
-              subject: key.toUpperCase(),
-              score: s.current || 0,
-              fullMark: 100
-            };
-          });
-
-          // Line chart: test-by-test trend for each subject
-          const maxTests = Math.max(...subjectKeys.map(key => subjectsData[key].history.length), 1);
-          const lineData = Array.from({ length: maxTests }, (_, i) => {
-            const point = { test: `T${i + 1}` };
-            subjectKeys.forEach(key => {
-              point[key] = subjectsData[key].history[i] ?? null;
-            });
-            return point;
-          });
-
-          // Attendance pie data
-          const attendanceData = subjectKeys.map((key, i) => {
-            const att = subjectsData[key].attendance;
-            return {
-              name: key.toUpperCase(),
-              value: att?.percentage || 0,
-              fill: COLORS[i % COLORS.length]
-            };
-          });
-
-          // Subject score cards for quick overview
-          const subjectEntries = subjectKeys.map(key => {
-            const s = subjectsData[key];
-            return { key, ...s, fullName: subjectNames[key] };
-          });
-
-          const CustomTooltip = ({ active, payload, label }) => {
-            if (active && payload && payload.length) {
-              return (
-                <div className="bg-white shadow-lg rounded-lg border border-gray-200 p-3 text-xs">
-                  <p className="font-bold text-gray-800 mb-1">{label}</p>
-                  {payload.map((entry, i) => (
-                    <p key={i} style={{ color: entry.color }}>
-                      {entry.name}: <span className="font-bold">{entry.value}</span>
-                    </p>
-                  ))}
+        {/* Tips and Features Row */}
+        {user.role === 'student' && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10">
+            {/* Tips Section */}
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-white rounded-2xl border-2 border-neutral-200 shadow-md p-6 hover:border-lime-300 transition-all"
+            >
+              <h3 className="text-lg font-bold text-black mb-5 flex items-center gap-2">
+                <div className="w-9 h-9 bg-gradient-to-br from-lime-300 to-emerald-300 rounded-xl flex items-center justify-center shadow-md">
+                  <GraduationCap className="w-5 h-5 text-black" />
                 </div>
-              );
-            }
-            return null;
-          };
-
-          return (
-            <>
-              {/* Subject Score Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mt-6">
-                {subjectEntries.map((s, i) => (
-                  <div key={s.key} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-center">
-                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{s.fullName}</p>
-                    <p className={`text-3xl font-bold ${
-                      s.current >= 75 ? 'text-green-600' : s.current >= 40 ? 'text-yellow-600' : 'text-red-600'
-                    }`}>{s.current}</p>
-                    <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getLevelColor(s.level)}`}>
-                      {s.level}
-                    </span>
-                  </div>
-                ))}
+                Quick Tips
+              </h3>
+              <div className="space-y-4">
+                {tips.map((tip, i) => {
+                  const TipIcon = tip.icon;
+                  return (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: 0.5 + i * 0.1 }}
+                      className={`flex items-start gap-3 p-3 rounded-xl border-2 ${tip.borderColor} bg-gradient-to-r ${tip.bg} hover:shadow-md transition-all`}
+                    >
+                      <div className={`w-10 h-10 bg-white rounded-lg flex items-center justify-center shrink-0 shadow-sm`}>
+                        <TipIcon className={`w-5 h-5 ${tip.color}`} />
+                      </div>
+                      <p className="text-sm text-neutral-700 font-medium leading-relaxed pt-1.5">
+                        {tip.text}
+                      </p>
+                    </motion.div>
+                  );
+                })}
               </div>
+            </motion.div>
 
-              {/* Charts Row 1: Radar + Bar */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                {/* Radar Chart */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                  <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Award className="w-4 h-4 text-indigo-600" />
-                    Performance Radar
-                  </h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <RadarChart data={radarData}>
-                      <PolarGrid stroke="#e5e7eb" />
-                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: '#6b7280' }} />
-                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
-                      <Radar name="Score" dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.3} strokeWidth={2} />
-                      <Tooltip content={<CustomTooltip />} />
-                    </RadarChart>
-                  </ResponsiveContainer>
+            {/* Features Section */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.5 }}
+              className="bg-white rounded-2xl border-2 border-neutral-200 shadow-md p-6 hover:border-lime-300 transition-all"
+            >
+              <h3 className="text-lg font-bold text-black mb-5 flex items-center gap-2">
+                <div className="w-9 h-9 bg-gradient-to-br from-purple-300 to-purple-500 rounded-xl flex items-center justify-center shadow-md">
+                  <Sparkles className="w-5 h-5 text-white" />
                 </div>
-
-                {/* Bar Chart: Current vs Average vs Highest */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                  <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-emerald-600" />
-                    Score Comparison
-                  </h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={barData} barCategoryGap="20%">
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                      <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                      <Bar dataKey="current" name="Current" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="average" name="Average" fill="#10b981" radius={[4, 4, 0, 0]} />
-                      <Bar dataKey="highest" name="Highest" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                Platform Features
+              </h3>
+              <div className="space-y-4">
+                {features.map((feature, i) => {
+                  const FeatureIcon = feature.icon;
+                  return (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.6 + i * 0.1 }}
+                      className="flex items-start gap-3"
+                    >
+                      <div className={`w-10 h-10 ${feature.bg} rounded-xl flex items-center justify-center shrink-0 shadow-sm`}>
+                        <FeatureIcon className={`w-5 h-5 ${feature.color}`} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-black mb-1">
+                          {feature.title}
+                        </h4>
+                        <p className="text-xs text-neutral-600 leading-relaxed">
+                          {feature.description}
+                        </p>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
-
-              {/* Charts Row 2: Line + Pie */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-                {/* Line Chart: Test-by-test trend */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                  <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4 text-purple-600" />
-                    Test Score Trends
-                  </h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={lineData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                      <XAxis dataKey="test" tick={{ fontSize: 11 }} />
-                      <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                      {subjectKeys.map((key, i) => (
-                        <Line
-                          key={key}
-                          type="monotone"
-                          dataKey={key}
-                          name={subjectNames[key]?.split(' ').map(w => w[0]).join('') || key.toUpperCase()}
-                          stroke={COLORS[i % COLORS.length]}
-                          strokeWidth={2}
-                          dot={{ r: 4 }}
-                          connectNulls
-                        />
-                      ))}
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* Pie Chart: Attendance */}
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                  <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-cyan-600" />
-                    Attendance Overview
-                  </h3>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={attendanceData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={3}
-                        dataKey="value"
-                        label={({ name, value }) => `${name} ${value}%`}
-                      >
-                        {attendanceData.map((entry, i) => (
-                          <Cell key={i} fill={entry.fill} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(val) => `${val}%`} />
-                      <Legend wrapperStyle={{ fontSize: 12 }} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              </div>
-
-              {/* Per-Subject Detail Cards */}
-              <div className="mt-6">
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                  <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <Award className="w-4 h-4 text-indigo-600" />
-                    Subject Details
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {subjectEntries.map((s, i) => {
-                      const scores = s.history || [];
-                      const att = s.attendance;
-                      return (
-                        <div key={s.key} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="text-sm font-semibold text-gray-900">{s.fullName}</h4>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getLevelColor(s.level)}`}>{s.level}</span>
-                          </div>
-                          <div className="grid grid-cols-3 gap-2 text-center mb-3">
-                            <div className="bg-gray-50 rounded-lg p-2">
-                              <p className="text-[10px] text-gray-500">Current</p>
-                              <p className={`text-lg font-bold ${s.current >= 75 ? 'text-green-600' : s.current >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>{s.current}</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-lg p-2">
-                              <p className="text-[10px] text-gray-500">Average</p>
-                              <p className="text-lg font-bold text-gray-800">{s.average}</p>
-                            </div>
-                            <div className="bg-gray-50 rounded-lg p-2">
-                              <p className="text-[10px] text-gray-500">Tests</p>
-                              <p className="text-lg font-bold text-gray-800">{scores.length}</p>
-                            </div>
-                          </div>
-                          {/* Mini sparkline bar */}
-                          <div className="flex items-end gap-0.5 h-8">
-                            {scores.map((sc, si) => (
-                              <div
-                                key={si}
-                                className={`flex-1 rounded-t ${sc >= 75 ? 'bg-green-400' : sc >= 40 ? 'bg-yellow-400' : 'bg-red-400'}`}
-                                style={{ height: `${Math.max(4, (sc / 100) * 32)}px` }}
-                                title={`Test ${si + 1}: ${sc}/100`}
-                              />
-                            ))}
-                          </div>
-                          {att && (
-                            <div className="mt-2 flex items-center justify-between text-[10px] text-gray-500">
-                              <span>Attendance: {att.attendedClasses}/{att.totalClasses}</span>
-                              <span className={`font-bold ${att.percentage >= 75 ? 'text-green-600' : att.percentage >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>{att.percentage}%</span>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            </>
-          );
-        })()}
+            </motion.div>
+          </div>
+        )}
 
         {/* Faculty View */}
         {user.role === 'faculty' && (
-          <div className="bg-white rounded-lg shadow p-6 mt-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Faculty Dashboard</h3>
-            <p className="text-gray-600">Welcome to the faculty portal. Additional features coming soon!</p>
-          </div>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl border-2 border-neutral-200 shadow-lg p-10 text-center"
+          >
+            <div className="w-20 h-20 bg-gradient-to-br from-lime-300 to-emerald-300 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg">
+              <GraduationCap className="w-10 h-10 text-black" />
+            </div>
+            <h3 className="text-2xl font-bold text-black mb-3">Faculty Dashboard</h3>
+            <p className="text-neutral-600 mb-8 max-w-md mx-auto">
+              Welcome to the faculty portal. Advanced features and student management tools coming soon!
+            </p>
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              className="bg-black text-lime-300 px-8 py-3 rounded-xl font-bold inline-flex items-center gap-2 shadow-lg"
+            >
+              Explore Features
+              <ArrowRight className="w-5 h-5" />
+            </motion.button>
+          </motion.div>
         )}
       </main>
 
-      {/* AI Chatbot - bottom right corner */}
+      {/* AI Chatbot */}
       {user.role === 'student' && user._id && (
         <ChatBot userId={user._id} userName={user.name} />
       )}

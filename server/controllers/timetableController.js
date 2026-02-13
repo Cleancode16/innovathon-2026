@@ -50,7 +50,6 @@ const getTimetable = async (req, res) => {
         ? parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1))
         : 0;
 
-      const attendance = userSubject?.attendance || { totalClasses: 0, attendedClasses: 0, percentage: 0 };
       const topics = subjectTests.map(t => ({ topic: t.topic, marks: t.marks, difficulty: t.difficulty }));
 
       subjectData[key] = {
@@ -59,7 +58,6 @@ const getTimetable = async (req, res) => {
         average: avg,
         level,
         scores,
-        attendance,
         topics
       };
     }

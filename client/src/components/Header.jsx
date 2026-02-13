@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { isAuthenticated, logout, getCurrentUser } from '../services/authService';
 import {
-  GraduationCap, LayoutDashboard, MapPin, Calendar, LogOut, ArrowRight, LogIn
+  GraduationCap, LayoutDashboard, MapPin, Calendar, BookMarked, User, LogOut, ArrowRight, LogIn
 } from 'lucide-react';
 
 const Header = () => {
@@ -39,6 +39,8 @@ const Header = () => {
     { route: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { route: '/roadmap', label: 'Roadmap', icon: MapPin },
     { route: '/timetable', label: 'Timetable', icon: Calendar },
+    { route: '/resources', label: 'Resources', icon: BookMarked },
+    { route: '/profile', label: 'Profile', icon: User },
   ];
 
   // Guest navigation items (landing page sections)

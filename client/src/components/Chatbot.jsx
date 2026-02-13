@@ -94,7 +94,7 @@ const ChatBot = ({ userId, userName }) => {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: `Hey ${userName || 'there'}! I'm your **AI Study Assistant** on AcadBoost AI.\n\nI have access to all your test scores, attendance, and performance data. Here's what I can help with:\n\n- **Performance analysis** across all subjects\n- **Trend insights** — improving or declining?\n- **Study plans** tailored to your weak areas\n- **Topic-wise breakdowns** for any subject\n\nAsk me anything or pick a quick action below!`,
+      content: `Hey ${userName || 'there'}! I'm your **AI Study Assistant** on AcadBoost AI.\n\nI have access to all your test scores and performance data. Here's what I can help with:\n\n- **Performance analysis** across all subjects\n- **Trend insights** — improving or declining?\n- **Study plans** tailored to your weak areas\n- **Topic-wise breakdowns** for any subject\n\nAsk me anything or pick a quick action below!`,
     },
   ]);
   const [input, setInput] = useState('');

@@ -84,14 +84,10 @@ const generateStudentMarks = async () => {
     const currentScore = history[history.length - 1]; // Most recent test is current
     const level = getPerformanceLevel(currentScore);
 
-    // Generate attendance data
-    const attendance = generateAttendance(tier);
-
     marks[subject] = {
       current: currentScore,
       history: history,
-      level: level,
-      attendance: attendance
+      level: level
     };
   });
 
@@ -193,38 +189,7 @@ const generateTestProgression = (tier) => {
   return scores;
 };
 
-/**
- * Generate attendance data based on performance tier
- * Higher performing students tend to have better attendance
- */
-const generateAttendance = (tier) => {
-  // Total classes varies between 40-60 for a semester
-  const totalClasses = getRandomScore(40, 60);
-  let attendedClasses;
 
-  // Attendance correlates with performance tier
-  if (tier === 'High') {
-    // High performers: 80-100% attendance
-    const attendancePercent = getRandomScore(80, 100);
-    attendedClasses = Math.floor((attendancePercent / 100) * totalClasses);
-  } else if (tier === 'Medium') {
-    // Medium performers: 60-85% attendance
-    const attendancePercent = getRandomScore(60, 85);
-    attendedClasses = Math.floor((attendancePercent / 100) * totalClasses);
-  } else {
-    // Low performers: 40-70% attendance
-    const attendancePercent = getRandomScore(40, 70);
-    attendedClasses = Math.floor((attendancePercent / 100) * totalClasses);
-  }
-
-  const percentage = parseFloat(((attendedClasses / totalClasses) * 100).toFixed(2));
-
-  return {
-    totalClasses,
-    attendedClasses,
-    percentage
-  };
-};
 
 /**
  * Update subject marks and maintain history

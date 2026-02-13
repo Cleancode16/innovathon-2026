@@ -4,6 +4,8 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Roadmap from './pages/Roadmap';
 import Timetable from './pages/Timetable';
+import Resources from './pages/Resources';
+import Profile from './pages/Profile';
 import Landing from './pages/Landing';
 import Header from './components/Header';
 import { isAuthenticated } from './services/authService';
@@ -42,6 +44,22 @@ function App() {
             element={
               <ProtectedRoute>
                 <Timetable />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/resources" 
+            element={
+              <ProtectedRoute>
+                <Resources />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             } 
           />

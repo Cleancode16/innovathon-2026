@@ -1,6 +1,36 @@
-const { google } = require('@ai-sdk/google');
+﻿const { google } = require('@ai-sdk/google');
 const { generateText } = require('ai');
 const { GoogleGenerativeAI } = require('@google/generative-ai');
+
+/**
+ * Simple delay helper for rate limiting
+ */
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+/**
+ * Execute a Gemini API call with automatic retry on 429 rate limit errors.
+ * Waits progressively longer between retries.
+ */
+const withRateLimitRetry = async (fn, maxRetries = 3) => {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      const is429 = err?.statusCode === 429 ||
+        err?.lastError?.statusCode === 429 ||
+        err?.message?.includes('429') ||
+        err?.message?.includes('RESOURCE_EXHAUSTED') ||
+        err?.message?.includes('quota');
+      if (is429 && attempt < maxRetries) {
+        const waitMs = (attempt + 1) * 15000; // 15s, 30s, 45s
+        console.log(`Rate limited (429). Retrying in ${waitMs / 1000}s... (attempt ${attempt + 1}/${maxRetries})`);
+        await delay(waitMs);
+      } else {
+        throw err;
+      }
+    }
+  }
+};
 
 /**
  * Subject-specific topic generation prompts
@@ -58,7 +88,7 @@ Return ONLY a JSON array of 4 topic names, nothing else.
 Example format: ["Topic 1", "Topic 2", "Topic 3", "Topic 4"]`;
 
     const { text } = await generateText({
-      model: google('gemini-2.5-flash'),
+      model: google('gemini-1.5-flash-8b'),
       prompt: prompt,
       temperature: 0.7,
     });
@@ -107,7 +137,7 @@ Provide a concise, actionable performance analysis (max 150 words) covering:
 Be encouraging but honest. Focus on actionable insights.`;
 
     const { text } = await generateText({
-      model: google('gemini-2.5-flash'),
+      model: google('gemini-1.5-flash-8b'),
       prompt: prompt,
       temperature: 0.7,
       maxTokens: 300,
@@ -220,28 +250,28 @@ Test Details:
 
 Provide a detailed analysis (200-250 words) structured EXACTLY as follows:
 
-📊 SCORE BREAKDOWN
+ðŸ“Š SCORE BREAKDOWN
 Analyze what the score of ${marks}/100 means for this difficulty (${difficulty}) and topic. Comment on where the student likely stands.
 
-📈 PERFORMANCE TREND
+ðŸ“ˆ PERFORMANCE TREND
 Compare to previous tests. Identify if improving/declining/fluctuating. Reference specific score changes.
 
-💪 STRENGTHS IDENTIFIED
+ðŸ’ª STRENGTHS IDENTIFIED
 Based on the score and topic, list 2-3 specific strengths the student likely demonstrated.
 
-⚠️ AREAS FOR IMPROVEMENT
+âš ï¸ AREAS FOR IMPROVEMENT
 List 2-3 specific concepts within "${topic || subjectInfo.name}" that need more work based on the score.
 
-🎯 ACTIONABLE STUDY PLAN
+ðŸŽ¯ ACTIONABLE STUDY PLAN
 Give 3-4 concrete, specific study actions for this topic. Include resource suggestions (e.g. "practice ${subjectInfo.context.split(',')[0]} problems on LeetCode").
 
-📅 NEXT TEST PREDICTION
+ðŸ“… NEXT TEST PREDICTION
 Based on the trend, predict likely performance on the next test and what score to target.
 
 Be specific to ${subjectInfo.name} concepts. Use encouraging but honest tone.`;
 
     const { text } = await generateText({
-      model: google('gemini-2.5-flash'),
+      model: google('gemini-1.5-flash-8b'),
       prompt,
       temperature: 0.7,
       maxTokens: 500,
@@ -272,7 +302,7 @@ const generateBatchTestAnalysis = async (subjectKey, testsData) => {
     const testsDescription = testsData.map((t, i) => {
       const prevScore = i > 0 ? testsData[i - 1].marks : null;
       const trend = prevScore !== null
-        ? (t.marks > prevScore ? `+${t.marks - prevScore}` : t.marks < prevScore ? `${t.marks - prevScore}` : '±0')
+        ? (t.marks > prevScore ? `+${t.marks - prevScore}` : t.marks < prevScore ? `${t.marks - prevScore}` : 'Â±0')
         : 'first';
       return `Test ${t.testNumber}: Score=${t.marks}/100, Difficulty=${t.difficulty}, Topic="${t.topic || 'General'}", Trend=${trend}`;
     }).join('\n');
@@ -288,12 +318,12 @@ ${testsDescription}
 
 For EACH test (Test 1 through Test 4), provide a SEPARATE detailed analysis structured as:
 
-📊 SCORE BREAKDOWN - What the score means for the difficulty level and topic
-📈 PERFORMANCE TREND - Comparison to previous tests with specific numbers
-💪 STRENGTHS - 2-3 specific strengths demonstrated
-⚠️ AREAS FOR IMPROVEMENT - 2-3 specific weak concepts
-🎯 STUDY PLAN - 3 concrete study actions with specific resources/topics
-📅 NEXT TARGET - Predicted score and target for next test
+ðŸ“Š SCORE BREAKDOWN - What the score means for the difficulty level and topic
+ðŸ“ˆ PERFORMANCE TREND - Comparison to previous tests with specific numbers
+ðŸ’ª STRENGTHS - 2-3 specific strengths demonstrated
+âš ï¸ AREAS FOR IMPROVEMENT - 2-3 specific weak concepts
+ðŸŽ¯ STUDY PLAN - 3 concrete study actions with specific resources/topics
+ðŸ“… NEXT TARGET - Predicted score and target for next test
 
 Return as a JSON array of exactly 4 strings, each containing the full analysis for that test.
 Format: ["analysis for test 1", "analysis for test 2", "analysis for test 3", "analysis for test 4"]
@@ -301,7 +331,7 @@ Format: ["analysis for test 1", "analysis for test 2", "analysis for test 3", "a
 Each analysis should be 150-200 words. Be specific to ${subjectInfo.name}. Use encouraging but honest tone.`;
 
     const { text } = await generateText({
-      model: google('gemini-2.5-flash'),
+      model: google('gemini-1.5-flash-8b'),
       prompt,
       temperature: 0.7,
       maxTokens: 2000,
@@ -332,35 +362,35 @@ const generateFallbackTestAnalysis = (subjectKey, testInfo) => {
   const level = marks >= 75 ? 'High' : marks >= 40 ? 'Medium' : 'Low';
   const prevScore = testNumber > 1 && allScores ? allScores[testNumber - 2] : null;
 
-  let analysis = `📊 SCORE BREAKDOWN\nYou scored ${marks}/100 on ${topic || subjectName} (${difficulty} difficulty). `;
+  let analysis = `ðŸ“Š SCORE BREAKDOWN\nYou scored ${marks}/100 on ${topic || subjectName} (${difficulty} difficulty). `;
   analysis += marks >= 75 ? 'This is an excellent score indicating strong understanding.\n\n' :
               marks >= 40 ? 'This shows a decent understanding but room for growth.\n\n' :
               'This indicates fundamental concepts need more attention.\n\n';
 
-  analysis += `📈 PERFORMANCE TREND\n`;
+  analysis += `ðŸ“ˆ PERFORMANCE TREND\n`;
   if (prevScore !== null) {
     const diff = marks - prevScore;
-    analysis += diff > 0 ? `Improved by ${diff} points from Test ${testNumber - 1} (${prevScore}→${marks}). Keep it up!\n\n` :
-                diff < 0 ? `Dropped by ${Math.abs(diff)} points from Test ${testNumber - 1} (${prevScore}→${marks}). Review recent concepts.\n\n` :
+    analysis += diff > 0 ? `Improved by ${diff} points from Test ${testNumber - 1} (${prevScore}â†’${marks}). Keep it up!\n\n` :
+                diff < 0 ? `Dropped by ${Math.abs(diff)} points from Test ${testNumber - 1} (${prevScore}â†’${marks}). Review recent concepts.\n\n` :
                 `Same score as Test ${testNumber - 1}. Aim for improvement.\n\n`;
   } else {
     analysis += `Baseline test. Average across all tests: ${avg}.\n\n`;
   }
 
-  analysis += `💪 STRENGTHS\n`;
-  analysis += marks >= 60 ? `• Good grasp of ${topic || 'core concepts'}\n• Consistent test-taking ability\n\n` :
-              `• Attempting all questions\n• Showing willingness to learn\n\n`;
+  analysis += `ðŸ’ª STRENGTHS\n`;
+  analysis += marks >= 60 ? `â€¢ Good grasp of ${topic || 'core concepts'}\nâ€¢ Consistent test-taking ability\n\n` :
+              `â€¢ Attempting all questions\nâ€¢ Showing willingness to learn\n\n`;
 
-  analysis += `⚠️ AREAS FOR IMPROVEMENT\n`;
-  analysis += marks < 75 ? `• Deepen understanding of ${topic || subjectName} fundamentals\n• Practice timed problem-solving\n\n` :
-              `• Challenge yourself with advanced ${topic || subjectName} problems\n• Explore edge cases and optimization\n\n`;
+  analysis += `âš ï¸ AREAS FOR IMPROVEMENT\n`;
+  analysis += marks < 75 ? `â€¢ Deepen understanding of ${topic || subjectName} fundamentals\nâ€¢ Practice timed problem-solving\n\n` :
+              `â€¢ Challenge yourself with advanced ${topic || subjectName} problems\nâ€¢ Explore edge cases and optimization\n\n`;
 
-  analysis += `🎯 STUDY PLAN\n`;
-  analysis += `• Review ${topic || subjectName} notes and textbook chapters\n`;
-  analysis += `• Practice 10-15 problems on this topic daily\n`;
-  analysis += `• Take a mock test under timed conditions\n\n`;
+  analysis += `ðŸŽ¯ STUDY PLAN\n`;
+  analysis += `â€¢ Review ${topic || subjectName} notes and textbook chapters\n`;
+  analysis += `â€¢ Practice 10-15 problems on this topic daily\n`;
+  analysis += `â€¢ Take a mock test under timed conditions\n\n`;
 
-  analysis += `📅 NEXT TARGET\nAim for ${Math.min(100, marks + 10)}/100 on the next test.`;
+  analysis += `ðŸ“… NEXT TARGET\nAim for ${Math.min(100, marks + 10)}/100 on the next test.`;
 
   return analysis;
 };
@@ -383,10 +413,10 @@ const generateChatResponse = async (studentContext, userMessage, conversationHis
       ).join('\n') + '\n';
     }
 
-    const systemPrompt = `You are an intelligent, friendly AI study assistant for AcadBoost AI — a student academic performance tracking and improvement platform. You have access to all the student's academic data and test performance.
+    const systemPrompt = `You are an intelligent, friendly AI study assistant for AcadBoost AI â€” a student academic performance tracking and improvement platform. You have access to all the student's academic data and test performance.
 
 Your role:
-- Answer questions about the student's performance, scores, attendance, and progress
+- Answer questions about the student's performance, scores, and progress
 - Provide personalized study advice based on their actual data
 - Help them understand their strengths and weaknesses
 - Suggest study plans, resources, and strategies
@@ -418,11 +448,11 @@ ${historyText}`;
     // Use @google/generative-ai SDK directly for chat
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash-8b',
       systemInstruction: systemPrompt 
     });
 
-    const result = await model.generateContent(userMessage);
+    const result = await withRateLimitRetry(() => model.generateContent(userMessage));
     const response = result.response;
     return response.text().trim();
   } catch (error) {
@@ -434,7 +464,7 @@ ${historyText}`;
 /**
  * Generate a personalised study roadmap for a specific subject using Gemini AI
  * @param {string} subjectKey - Subject key (os, cn, etc.)
- * @param {object} data - { studentName, current, average, level, scores, attendance, topics }
+ * @param {object} data - { studentName, current, average, level, scores, topics }
  * @returns {Promise<object>} Structured roadmap object
  */
 const generateSubjectRoadmap = async (subjectKey, data) => {
@@ -442,7 +472,7 @@ const generateSubjectRoadmap = async (subjectKey, data) => {
     const subjectInfo = SUBJECT_CONTEXTS[subjectKey];
     if (!subjectInfo) throw new Error(`Unknown subject: ${subjectKey}`);
 
-    const { studentName, current, average, level, scores, attendance, topics } = data;
+    const { studentName, current, average, level, scores, topics } = data;
     const topicDetails = topics.map(t => `${t.topic} (scored ${t.marks}/100, ${t.difficulty} difficulty)`).join('; ');
 
     let trend = 'stable';
@@ -462,7 +492,7 @@ STUDENT DATA:
 - Performance Level: ${level}
 - Score History: [${scores.join(', ')}]
 - Trend: ${trend}
-- Attendance: ${attendance.percentage}% (${attendance.attendedClasses}/${attendance.totalClasses} classes)
+- Tests Taken: ${scores.length}
 - Topics Tested: ${topicDetails || 'General'}
 
 Subject Context: ${subjectInfo.context}
@@ -522,7 +552,7 @@ RULES:
 
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash-8b',
       generationConfig: { responseMimeType: 'application/json' }
     });
 
@@ -614,7 +644,7 @@ const generateFallbackRoadmap = (subjectKey, data) => {
       { week: 3, goal: 'Intermediate topics', targetScore: Math.min(100, current + 15) },
       { week: 4, goal: 'Mock tests', targetScore: Math.min(100, current + 20) }
     ],
-    motivationalNote: `Keep going ${studentName}! Every hour of focused study pushes your grades higher. You've got this! 💪`
+    motivationalNote: `Keep going ${studentName}! Every hour of focused study pushes your grades higher. You've got this! ðŸ’ª`
   };
 };
 
@@ -627,7 +657,7 @@ const generateTimetable = async (view, data) => {
   try {
     const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash-8b',
       generationConfig: {
         responseMimeType: 'application/json',
         temperature: 0.7
@@ -642,7 +672,7 @@ const generateTimetable = async (view, data) => {
     const strongSubjects = sorted.filter(([, s]) => s.level === 'High');
 
     const subjectSummary = sorted.map(([key, s]) =>
-      `${s.name}: current=${s.current}/100, avg=${s.average}, level=${s.level}, attendance=${s.attendance.percentage}%`
+      `${s.name}: current=${s.current}/100, avg=${s.average}, level=${s.level}`
     ).join('\n');
 
     let viewPrompt = '';
@@ -761,7 +791,7 @@ Rules:
 - Allocate significantly more study time to weak (Low/Medium level) subjects
 - Strong subjects still need maintenance but less time
 - Include practical activities: problem solving, mock tests, coding practice
-- Be realistic with time — students have meals, rest, some leisure
+- Be realistic with time â€” students have meals, rest, some leisure
 - Morning slots are best for difficult subjects
 - Evening slots are good for revision
 - Include at least one break between long study sessions
@@ -890,6 +920,136 @@ const generateFallbackTimetable = (view, data) => {
   };
 };
 
+/**
+ * Generate personalised study resources and notes for a subject using Gemini AI
+ * @param {string} subjectKey - Subject key (os, cn, etc.)
+ * @param {object} data - { studentName, current, average, level, scores, topics }
+ * @returns {Promise<object>} Structured resources object
+ */
+const generateSubjectResources = async (subjectKey, data) => {
+  try {
+    const subjectInfo = SUBJECT_CONTEXTS[subjectKey];
+    if (!subjectInfo) throw new Error(`Unknown subject: ${subjectKey}`);
+
+    const { studentName, current, average, level, scores, topics } = data;
+    const topicDetails = topics.map(t => `${t.topic} (scored ${t.marks}/100, ${t.difficulty} difficulty)`).join('; ');
+
+    const prompt = `You are an expert academic resource curator on AcadBoost AI. Generate comprehensive, personalised study resources and notes for a student in ${subjectInfo.name}.
+
+STUDENT DATA:
+- Name: ${studentName}
+- Current Score: ${current}/100
+- Average Score: ${average}/100
+- Performance Level: ${level}
+- Score History: [${scores.join(', ')}]
+- Topics Tested: ${topicDetails || 'General'}
+
+Subject Context: ${subjectInfo.context}
+
+Generate a comprehensive JSON response with this EXACT structure (no markdown, just valid JSON).
+NOTE: Videos, practice links, reading materials, and cheat sheets are provided separately from a curated database. You ONLY need to generate quickNotes, studyTips, and weakAreaFocus.
+
+{
+  "quickNotes": [
+    {
+      "title": "Topic name",
+      "content": "Concise but thorough explanation of the topic (3-5 sentences covering key concepts)",
+      "keyPoints": ["Key point 1", "Key point 2", "Key point 3"],
+      "difficulty": "beginner|intermediate|advanced",
+      "importance": "high|medium|low"
+    }
+  ],
+  "studyTips": [
+    "Specific actionable study tip based on performance level"
+  ],
+  "weakAreaFocus": [
+    {
+      "topic": "Weak topic name",
+      "currentUnderstanding": "Brief assessment",
+      "recommendedApproach": "How to improve",
+      "resources": ["Specific resource name 1", "Specific resource name 2"]
+    }
+  ]
+}
+
+IMPORTANT RULES:
+- Generate 6-8 quick notes covering the most important topics for this subject
+- Each quick note should have thorough content (3-5 sentences), 3-5 key points, appropriate difficulty and importance
+- Give 4-5 study tips personalised to the student's level (${level})
+- Identify 2-3 weak areas based on the student's scores and recommend focused resources
+- Tailor difficulty of resources to student's level: ${level}
+- Return ONLY valid JSON, no markdown formatting`;
+
+    const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-8b' });
+
+    const result = await withRateLimitRetry(() => model.generateContent(prompt));
+    const text = result.response.text().trim();
+
+    // Parse JSON from response
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('No JSON found in Gemini response');
+
+    const resources = JSON.parse(jsonMatch[0]);
+    return resources;
+  } catch (error) {
+    console.error('Resources generation error:', error);
+    // Return fallback resources
+    return generateFallbackResources(subjectKey, data);
+  }
+};
+
+/**
+ * Generate fallback resources when AI is unavailable
+ */
+const generateFallbackResources = (subjectKey, data) => {
+  const subjectInfo = SUBJECT_CONTEXTS[subjectKey];
+  const name = subjectInfo?.name || 'Subject';
+  const topics = subjectInfo?.context?.split(', ') || [];
+
+  // Use curated real resources for the verified links
+  const CURATED_RESOURCES = require('../utils/curatedResources');
+  const curated = CURATED_RESOURCES[subjectKey] || {};
+
+  return {
+    quickNotes: topics.slice(0, 6).map((topic, i) => ({
+      title: topic,
+      content: `${topic} is a fundamental concept in ${name}. Understanding this topic is crucial for building strong foundations.`,
+      keyPoints: [`Core concept of ${topic}`, `Applications in ${name}`, `Common exam questions`],
+      difficulty: i < 2 ? 'beginner' : i < 4 ? 'intermediate' : 'advanced',
+      importance: i < 3 ? 'high' : 'medium'
+    })),
+    videoResources: curated.videoResources || [
+      { title: `${name} Full Course`, channel: 'Gate Smashers', description: `Complete ${name} course`, url: 'https://youtube.com', duration: '2 hrs', level: 'beginner' }
+    ],
+    practiceResources: curated.practiceResources || [
+      { title: 'GeeksforGeeks', type: 'website', description: `Practice ${name} problems`, url: 'https://www.geeksforgeeks.org', focus: 'Problem solving' }
+    ],
+    readingMaterials: curated.readingMaterials || [
+      { title: `${name} Textbook`, author: 'Standard Reference', type: 'textbook', description: `Comprehensive ${name} textbook`, url: '', chapters: 'All chapters' }
+    ],
+    cheatSheet: curated.cheatSheet || {
+      title: `${name} Quick Reference`,
+      sections: topics.slice(0, 4).map(topic => ({
+        heading: topic,
+        items: [`Key formula for ${topic}`, `Important rule for ${topic}`, `Common pattern in ${topic}`]
+      }))
+    },
+    studyTips: [
+      `Focus on understanding core concepts of ${name}`,
+      'Practice regularly with mock tests',
+      'Review weak areas identified in your test history',
+      'Use spaced repetition for memorising key formulas'
+    ],
+    weakAreaFocus: topics.slice(0, 2).map(topic => ({
+      topic,
+      currentUnderstanding: 'Needs improvement',
+      recommendedApproach: `Start with basics and practice problems on ${topic}`,
+      resources: [`GeeksforGeeks - ${topic}`, `YouTube - ${topic} tutorial`]
+    }))
+  };
+};
+
 module.exports = {
   generateTestTopics,
   generatePerformanceAnalysis,
@@ -899,5 +1059,6 @@ module.exports = {
   generateSubjectRoadmap,
   generateTimetable,
   enrichSubjectsWithAI,
+  generateSubjectResources,
   SUBJECT_CONTEXTS
 };

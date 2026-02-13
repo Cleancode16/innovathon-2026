@@ -40,12 +40,7 @@ const userSchema = new mongoose.Schema({
         default: 'Low' 
       },
       conceptsCovered: [{ type: String }],
-      aiAnalysis: { type: String, default: '' },
-      attendance: {
-        totalClasses: { type: Number, default: 0, min: 0 },
-        attendedClasses: { type: Number, default: 0, min: 0 },
-        percentage: { type: Number, default: 0, min: 0, max: 100 }
-      }
+      aiAnalysis: { type: String, default: '' }
     },
     cn: {
       current: { type: Number, default: 0, min: 0, max: 100 },
@@ -56,12 +51,7 @@ const userSchema = new mongoose.Schema({
         default: 'Low' 
       },
       conceptsCovered: [{ type: String }],
-      aiAnalysis: { type: String, default: '' },
-      attendance: {
-        totalClasses: { type: Number, default: 0, min: 0 },
-        attendedClasses: { type: Number, default: 0, min: 0 },
-        percentage: { type: Number, default: 0, min: 0, max: 100 }
-      }
+      aiAnalysis: { type: String, default: '' }
     },
     dbms: {
       current: { type: Number, default: 0, min: 0, max: 100 },
@@ -72,12 +62,7 @@ const userSchema = new mongoose.Schema({
         default: 'Low' 
       },
       conceptsCovered: [{ type: String }],
-      aiAnalysis: { type: String, default: '' },
-      attendance: {
-        totalClasses: { type: Number, default: 0, min: 0 },
-        attendedClasses: { type: Number, default: 0, min: 0 },
-        percentage: { type: Number, default: 0, min: 0, max: 100 }
-      }
+      aiAnalysis: { type: String, default: '' }
     },
     oops: {
       current: { type: Number, default: 0, min: 0, max: 100 },
@@ -88,12 +73,7 @@ const userSchema = new mongoose.Schema({
         default: 'Low' 
       },
       conceptsCovered: [{ type: String }],
-      aiAnalysis: { type: String, default: '' },
-      attendance: {
-        totalClasses: { type: Number, default: 0, min: 0 },
-        attendedClasses: { type: Number, default: 0, min: 0 },
-        percentage: { type: Number, default: 0, min: 0, max: 100 }
-      }
+      aiAnalysis: { type: String, default: '' }
     },
     dsa: {
       current: { type: Number, default: 0, min: 0, max: 100 },
@@ -104,12 +84,7 @@ const userSchema = new mongoose.Schema({
         default: 'Low' 
       },
       conceptsCovered: [{ type: String }],
-      aiAnalysis: { type: String, default: '' },
-      attendance: {
-        totalClasses: { type: Number, default: 0, min: 0 },
-        attendedClasses: { type: Number, default: 0, min: 0 },
-        percentage: { type: Number, default: 0, min: 0, max: 100 }
-      }
+      aiAnalysis: { type: String, default: '' }
     },
     qa: {
       current: { type: Number, default: 0, min: 0, max: 100 },
@@ -120,12 +95,7 @@ const userSchema = new mongoose.Schema({
         default: 'Low' 
       },
       conceptsCovered: [{ type: String }],
-      aiAnalysis: { type: String, default: '' },
-      attendance: {
-        totalClasses: { type: Number, default: 0, min: 0 },
-        attendedClasses: { type: Number, default: 0, min: 0 },
-        percentage: { type: Number, default: 0, min: 0, max: 100 }
-      }
+      aiAnalysis: { type: String, default: '' }
     }
   },
   createdAt: {

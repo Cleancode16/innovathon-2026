@@ -44,7 +44,6 @@ const getRoadmap = async (req, res) => {
 
       const current = userSubject?.current || (scores.length > 0 ? scores[scores.length - 1] : 0);
       const level = current >= 75 ? 'High' : current >= 40 ? 'Medium' : 'Low';
-      const attendance = userSubject?.attendance || { totalClasses: 0, attendedClasses: 0, percentage: 0 };
 
       // Determine trend
       let trend = 'stable';
@@ -64,7 +63,6 @@ const getRoadmap = async (req, res) => {
         level,
         trend,
         scores,
-        attendance,
         topics,
         testCount: scores.length
       };
@@ -114,7 +112,6 @@ const getSubjectRoadmap = async (req, res) => {
       ? parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1))
       : 0;
 
-    const attendance = userSubject?.attendance || { totalClasses: 0, attendedClasses: 0, percentage: 0 };
     const topics = subjectTests.map(t => ({ topic: t.topic, marks: t.marks, difficulty: t.difficulty }));
 
     const roadmap = await generateSubjectRoadmap(subject, {
@@ -123,7 +120,6 @@ const getSubjectRoadmap = async (req, res) => {
       average: avg,
       level,
       scores,
-      attendance,
       topics
     });
 

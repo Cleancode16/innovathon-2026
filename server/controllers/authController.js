@@ -7,8 +7,8 @@ const { seedTestsForUser } = require('../utils/testSeeder');
 const SUBJECT_KEYS = ['os', 'cn', 'dbms', 'oops', 'dsa', 'qa'];
 
 /**
- * Compute fresh subject analytics from Test collection + User.subjects (for attendance).
- * Returns a clean subjects object with current, history, level, average, attendance, etc.
+ * Compute fresh subject analytics from Test collection + User.subjects.
+ * Returns a clean subjects object with current, history, level, average, etc.
  */
 const computeFreshSubjects = async (userId, userSubjects) => {
   const tests = await Test.find({ user: userId }).sort({ subject: 1, testNumber: 1 });
@@ -33,8 +33,7 @@ const computeFreshSubjects = async (userId, userSubjects) => {
       level,
       average: avg,
       conceptsCovered: userSubj?.conceptsCovered || [],
-      aiAnalysis: userSubj?.aiAnalysis || '',
-      attendance: userSubj?.attendance || { totalClasses: 0, attendedClasses: 0, percentage: 0 }
+      aiAnalysis: userSubj?.aiAnalysis || ''
     };
   }
   return freshSubjects;
@@ -93,11 +92,10 @@ const register = asyncHandler(async (req, res) => {
       token: generateToken(user._id)
     };
 
-    // If student, seed 4 test entries per subject in Test collection
+    // If student, seed test entries (now instant — no AI calls)
     if (role === 'student') {
       try {
         const subjectsSummary = await seedTestsForUser(user._id);
-        // Also persist the summary on the User doc for quick access
         user.subjects = subjectsSummary;
         await user.save();
         responseData.subjects = subjectsSummary;
@@ -156,19 +154,6 @@ const login = asyncHandler(async (req, res) => {
   // Include fresh subjects data for students computed from Test collection
   if (user.role === 'student') {
     try {
-      // Check if test documents exist; if not, re-seed them
-      const testCount = await Test.countDocuments({ user: user._id });
-      if (testCount === 0) {
-        console.log(`No tests found for user ${user._id}, re-seeding...`);
-        try {
-          const subjectsSummary = await seedTestsForUser(user._id);
-          user.subjects = subjectsSummary;
-          await user.save();
-        } catch (seedErr) {
-          console.error('Re-seeding tests failed:', seedErr.message);
-        }
-      }
-
       const freshSubjects = await computeFreshSubjects(user._id, user.subjects);
       if (freshSubjects) {
         responseData.subjects = freshSubjects;

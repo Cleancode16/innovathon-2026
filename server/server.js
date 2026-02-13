@@ -8,6 +8,7 @@ const testRoutes = require('./routes/tests');
 const chatRoutes = require('./routes/chat');
 const roadmapRoutes = require('./routes/roadmap');
 const timetableRoutes = require('./routes/timetable');
+const resourcesRoutes = require('./routes/resources');
 
 // Load environment variables
 dotenv.config();
@@ -32,6 +33,7 @@ app.use('/api/tests', testRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/roadmap', roadmapRoutes);
 app.use('/api/timetable', timetableRoutes);
+app.use('/api/resources', resourcesRoutes);
 
 // Root route
 app.get('/', (req, res) => {
