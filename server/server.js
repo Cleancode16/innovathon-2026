@@ -5,6 +5,9 @@ const dotenv = require('dotenv');
 const authRoutes = require('./routes/auth');
 const marksRoutes = require('./routes/marks');
 const testRoutes = require('./routes/tests');
+const chatRoutes = require('./routes/chat');
+const roadmapRoutes = require('./routes/roadmap');
+const timetableRoutes = require('./routes/timetable');
 
 // Load environment variables
 dotenv.config();
@@ -26,6 +29,9 @@ mongoose.connect(process.env.MONGODB_URI)
 app.use('/api/auth', authRoutes);
 app.use('/api/marks', marksRoutes);
 app.use('/api/tests', testRoutes);
+app.use('/api/chat', chatRoutes);
+app.use('/api/roadmap', roadmapRoutes);
+app.use('/api/timetable', timetableRoutes);
 
 // Root route
 app.get('/', (req, res) => {

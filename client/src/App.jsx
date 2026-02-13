@@ -2,6 +2,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Roadmap from './pages/Roadmap';
+import Timetable from './pages/Timetable';
 import { isAuthenticated } from './services/authService';
 
 // Protected Route Component
@@ -20,6 +22,22 @@ function App() {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/roadmap" 
+          element={
+            <ProtectedRoute>
+              <Roadmap />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/timetable" 
+          element={
+            <ProtectedRoute>
+              <Timetable />
             </ProtectedRoute>
           } 
         />

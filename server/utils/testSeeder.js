@@ -1,5 +1,5 @@
 const Test = require('../models/Test');
-const { enrichSubjectsWithAI } = require('../services/geminiService');
+const { enrichSubjectsWithAI, generateBatchTestAnalysis } = require('../services/geminiService');
 
 /**
  * Derive difficulty level from marks
@@ -172,8 +172,25 @@ const seedTestsForUser = async (userId) => {
     if (enriched?.conceptsCovered?.[doc.testNumber - 1]) {
       doc.topic = enriched.conceptsCovered[doc.testNumber - 1];
     }
-    if (enriched?.aiAnalysis) {
-      doc.aiInsights = enriched.aiAnalysis;
+  }
+
+  // Generate detailed per-test AI analysis for each subject (batch call per subject)
+  for (const subjectKey of subjects) {
+    const subjectTests = testDocs.filter(d => d.subject === subjectKey);
+    try {
+      const batchData = subjectTests.map(t => ({
+        testNumber: t.testNumber,
+        marks: t.marks,
+        difficulty: t.difficulty,
+        topic: t.topic
+      }));
+      const analyses = await generateBatchTestAnalysis(subjectKey, batchData);
+      subjectTests.forEach((t, i) => {
+        t.aiInsights = analyses[i] || '';
+      });
+    } catch (err) {
+      console.error(`Per-test analysis failed for ${subjectKey}:`, err.message);
+      // aiInsights stays empty – Dashboard will use client-side fallback
     }
   }
 

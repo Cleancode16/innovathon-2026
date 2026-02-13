@@ -1,16 +1,20 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser, logout } from '../services/authService';
-import { LogOut, User, Mail, Shield, BookOpen, TrendingUp, Award, ChevronDown, ChevronUp } from 'lucide-react';
+import { LogOut, User, Mail, Shield, BookOpen, TrendingUp, Award } from 'lucide-react';
 import axios from 'axios';
+import ChatBot from '../components/Chatbot';
+import {
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  LineChart, Line, ResponsiveContainer, PieChart, Pie, Cell
+} from 'recharts';
 
 const API_URL = 'http://localhost:3000/api';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
-  const [expandedRows, setExpandedRows] = useState({});
-  const [hoveredTest, setHoveredTest] = useState(null);
   const [seededTests, setSeededTests] = useState(null);
   const [loadingTests, setLoadingTests] = useState(false);
 
@@ -46,70 +50,6 @@ const Dashboard = () => {
     navigate('/login');
   };
 
-  const toggleRow = (subjectKey) => {
-    setExpandedRows(prev => ({
-      ...prev,
-      [subjectKey]: !prev[subjectKey]
-    }));
-  };
-
-  const getTestAnalysis = (subjectName, score, testNumber, totalTests, history) => {
-    const average = (history.reduce((a, b) => a + b, 0) / history.length).toFixed(1);
-    const trend = testNumber > 1 ? 
-      (score > history[testNumber - 2] ? 'improving' : 
-       score < history[testNumber - 2] ? 'declining' : 'stable') : 'baseline';
-    
-    const performanceLevel = score >= 75 ? 'excellent' : score >= 60 ? 'good' : score >= 40 ? 'average' : 'needs improvement';
-    const percentile = ((history.filter(s => s <= score).length / history.length) * 100).toFixed(0);
-    
-    let analysis = `📊 Test ${testNumber} Analysis for ${subjectName}\n\n`;
-    analysis += `Performance Level: ${performanceLevel.toUpperCase()}\n`;
-    analysis += `Score: ${score}/100 (${percentile}th percentile in your test history)\n\n`;
-    
-    if (trend === 'improving') {
-      const improvement = score - history[testNumber - 2];
-      analysis += `📈 Trend: Improving (+${improvement} points from previous test)\n`;
-      analysis += `Great progress! Your consistent effort is showing results.\n\n`;
-    } else if (trend === 'declining') {
-      const decline = history[testNumber - 2] - score;
-      analysis += `📉 Trend: Declining (-${decline} points from previous test)\n`;
-      analysis += `Focus needed. Review the concepts you struggled with.\n\n`;
-    } else if (trend === 'stable') {
-      analysis += `➡️ Trend: Stable performance\n`;
-      analysis += `Maintaining consistency. Push for improvement in next test.\n\n`;
-    }
-    
-    analysis += `📈 Comparison to Average: `;
-    if (score > average) {
-      analysis += `${(score - average).toFixed(1)} points above your average (${average})\n`;
-    } else if (score < average) {
-      analysis += `${(average - score).toFixed(1)} points below your average (${average})\n`;
-    } else {
-      analysis += `Exactly at your average (${average})\n`;
-    }
-    
-    analysis += `\n💡 AI Recommendations:\n`;
-    if (score >= 75) {
-      analysis += `• Excellent work! Focus on advanced concepts and problem-solving\n`;
-      analysis += `• Help peers to reinforce your understanding\n`;
-      analysis += `• Attempt challenging practice problems\n`;
-    } else if (score >= 60) {
-      analysis += `• Good foundation! Work on strengthening weak areas\n`;
-      analysis += `• Practice more problems to improve speed and accuracy\n`;
-      analysis += `• Review incorrect answers from this test\n`;
-    } else if (score >= 40) {
-      analysis += `• Review fundamental concepts thoroughly\n`;
-      analysis += `• Seek help from faculty or peers for difficult topics\n`;
-      analysis += `• Create study notes and practice regularly\n`;
-    } else {
-      analysis += `• Immediate attention required - meet with faculty\n`;
-      analysis += `• Focus on basic concepts before moving to complex topics\n`;
-      analysis += `• Consider forming a study group for support\n`;
-    }
-    
-    return analysis;
-  };
-
   if (!user) return null;
 
   // Subject name mapping
@@ -125,14 +65,10 @@ const Dashboard = () => {
   // Get performance level badge color
   const getLevelColor = (level) => {
     switch (level) {
-      case 'High':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'Medium':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'Low':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'High': return 'bg-green-100 text-green-800 border-green-200';
+      case 'Medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'Low': return 'bg-red-100 text-red-800 border-red-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
@@ -150,13 +86,29 @@ const Dashboard = () => {
       <header className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => navigate('/timetable')}
+              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              <TrendingUp className="w-4 h-4" />
+              Timetable
+            </button>
+            <button
+              onClick={() => navigate('/roadmap')}
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+            >
+              <BookOpen className="w-4 h-4" />
+              My Roadmap
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
@@ -231,375 +183,260 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Marks Table - Only for Students */}
-        {user.role === 'student' && user.subjects && (
-          <div className="bg-white rounded-lg shadow mt-6 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
-              <div className="flex items-center gap-2">
-                <Award className="w-5 h-5 text-indigo-600" />
-                <h3 className="text-lg font-semibold text-gray-900">Subject Performance & Test History</h3>
-              </div>
-              <p className="text-sm text-gray-600 mt-1">Your test scores across all placement subjects (click View to see all tests)</p>
-            </div>
-            
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Subject
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Current Score
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Attendance
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Performance Level
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Progress
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {Object.entries(user.subjects).map(([key, subject]) => (
-                    <>
-                      {/* Main Row */}
-                      <tr key={key} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center mr-3">
-                              <BookOpen className="w-5 h-5 text-indigo-600" />
-                            </div>
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                {subjectNames[key]}
-                              </div>
-                              <div className="text-xs text-gray-500 uppercase">{key}</div>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <div className="text-2xl font-bold text-gray-900">
-                            {subject.current}
-                            <span className="text-sm text-gray-500 font-normal">/100</span>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          {subject.attendance ? (
-                            <div>
-                              <div className="flex items-center justify-center gap-2 mb-1">
-                                <span className={`text-xl font-bold ${
-                                  subject.attendance.percentage >= 75 ? 'text-green-600' :
-                                  subject.attendance.percentage >= 60 ? 'text-yellow-600' :
-                                  'text-red-600'
-                                }`}>
-                                  {subject.attendance.percentage}%
-                                </span>
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                {subject.attendance.attendedClasses}/{subject.attendance.totalClasses} classes
-                              </div>
-                              <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
-                                <div 
-                                  className={`h-1.5 rounded-full ${
-                                    subject.attendance.percentage >= 75 ? 'bg-green-600' :
-                                    subject.attendance.percentage >= 60 ? 'bg-yellow-500' :
-                                    'bg-red-500'
-                                  }`}
-                                  style={{ width: `${subject.attendance.percentage}%` }}
-                                ></div>
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-gray-400">N/A</span>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getLevelColor(subject.level)}`}>
-                            {subject.level}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="w-full bg-gray-200 rounded-full h-2.5 mb-2">
-                            <div 
-                              className={`h-2.5 rounded-full ${
-                                subject.level === 'High' ? 'bg-green-600' :
-                                subject.level === 'Medium' ? 'bg-yellow-500' :
-                                'bg-red-500'
-                              }`}
-                              style={{ width: `${subject.current}%` }}
-                            ></div>
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {subject.history?.length || 0} test{subject.history?.length !== 1 ? 's' : ''} taken
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-center">
-                          <button
-                            onClick={() => toggleRow(key)}
-                            className="inline-flex items-center gap-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-                          >
-                            {expandedRows[key] ? (
-                              <>
-                                <ChevronUp className="w-4 h-4" />
-                                Hide
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown className="w-4 h-4" />
-                                View
-                              </>
-                            )}
-                          </button>
-                        </td>
-                      </tr>
+        {/* Charts Section - Only for Students */}
+        {user.role === 'student' && user.subjects && (() => {
+          const COLORS = ['#6366f1', '#10b981', '#8b5cf6', '#f97316', '#ef4444', '#06b6d4'];
+          const subjectKeys = Object.keys(user.subjects);
 
-                      {/* Expanded Row - Test History */}
-                      {expandedRows[key] && (
-                        <tr key={`${key}-expanded`} className="bg-gray-50">
-                          <td colSpan="6" className="px-6 py-6">
-                            <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
-                              <h4 className="text-sm font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                                <BookOpen className="w-4 h-4 text-indigo-600" />
-                                Test History for {subjectNames[key]}
-                                {loadingTests && <span className="text-xs text-gray-400 ml-2">Loading from database...</span>}
-                              </h4>
+          // Build chart data from user.subjects + seededTests
+          const barData = subjectKeys.map(key => {
+            const s = user.subjects[key];
+            const dbTests = seededTests?.[key]?.tests;
+            const scores = dbTests ? dbTests.map(t => t.marks) : (s.history || []);
+            const avg = scores.length ? +(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : 0;
+            return {
+              name: subjectNames[key]?.split(' ').map(w => w[0]).join('') || key.toUpperCase(),
+              fullName: subjectNames[key],
+              current: s.current || 0,
+              average: avg,
+              highest: scores.length ? Math.max(...scores) : 0,
+              lowest: scores.length ? Math.min(...scores) : 0,
+            };
+          });
 
-                              {/* Seeded Tests from DB */}
-                              {(() => {
-                                const dbTests = seededTests?.[key]?.tests;
-                                const scores = dbTests ? dbTests.map(t => t.marks) : subject.history;
-                                const hasDbTests = dbTests && dbTests.length > 0;
-                                const hasScores = scores && scores.length > 0;
+          const radarData = subjectKeys.map(key => {
+            const s = user.subjects[key];
+            return {
+              subject: key.toUpperCase(),
+              score: s.current || 0,
+              fullMark: 100
+            };
+          });
 
-                                return hasScores ? (
-                                  <>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                                      {(hasDbTests ? dbTests : scores.map((s, i) => ({ marks: s, testNumber: i + 1 }))).map((test, index) => {
-                                        const score = hasDbTests ? test.marks : test;
-                                        const testNum = hasDbTests ? test.testNumber : index + 1;
-                                        const testId = `${key}-${index}`;
-                                        const isHovered = hoveredTest === testId;
-                                        const isLatest = index === (hasDbTests ? dbTests.length : scores.length) - 1;
+          // Line chart: test-by-test trend for each subject
+          const maxTests = Math.max(...subjectKeys.map(key => {
+            const dbTests = seededTests?.[key]?.tests;
+            return dbTests ? dbTests.length : (user.subjects[key]?.history?.length || 0);
+          }), 1);
+          const lineData = Array.from({ length: maxTests }, (_, i) => {
+            const point = { test: `T${i + 1}` };
+            subjectKeys.forEach(key => {
+              const dbTests = seededTests?.[key]?.tests;
+              const scores = dbTests ? dbTests.map(t => t.marks) : (user.subjects[key]?.history || []);
+              point[key] = scores[i] ?? null;
+            });
+            return point;
+          });
 
-                                        const difficultyColors = {
-                                          low: 'bg-red-100 text-red-700 border-red-200',
-                                          medium: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-                                          high: 'bg-green-100 text-green-700 border-green-200'
-                                        };
+          // Attendance pie data
+          const attendanceData = subjectKeys.map((key, i) => {
+            const att = user.subjects[key]?.attendance;
+            return {
+              name: key.toUpperCase(),
+              value: att?.percentage || 0,
+              fill: COLORS[i % COLORS.length]
+            };
+          });
 
-                                        return (
-                                          <div
-                                            key={index}
-                                            className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                                              isLatest ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white'
-                                            } ${isHovered ? 'shadow-lg scale-105' : ''}`}
-                                            onMouseEnter={() => setHoveredTest(testId)}
-                                            onMouseLeave={() => setHoveredTest(null)}
-                                          >
-                                            <div className="flex items-center justify-between mb-2">
-                                              <span className="text-xs font-medium text-gray-500">
-                                                Test {testNum}
-                                              </span>
-                                              <div className="flex items-center gap-1">
-                                                {hasDbTests && test.difficulty && (
-                                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${difficultyColors[test.difficulty]}`}>
-                                                    {test.difficulty.toUpperCase()}
-                                                  </span>
-                                                )}
-                                                {isLatest && (
-                                                  <span className="text-xs font-semibold text-indigo-600 bg-indigo-100 px-2 py-0.5 rounded">
-                                                    Latest
-                                                  </span>
-                                                )}
-                                              </div>
-                                            </div>
+          // Subject score cards for quick overview
+          const subjectEntries = subjectKeys.map(key => {
+            const s = user.subjects[key];
+            const level = s.current >= 75 ? 'High' : s.current >= 40 ? 'Medium' : 'Low';
+            return { key, ...s, level, fullName: subjectNames[key] };
+          });
 
-                                            {/* Topic badge */}
-                                            {hasDbTests && test.topic && (
-                                              <p className="text-[11px] text-purple-600 font-medium mb-2 truncate" title={test.topic}>
-                                                📝 {test.topic}
-                                              </p>
-                                            )}
-
-                                            <div className={`text-4xl font-bold mb-2 ${
-                                              score >= 75 ? 'text-green-600' :
-                                              score >= 40 ? 'text-yellow-600' :
-                                              'text-red-600'
-                                            }`}>
-                                              {score}
-                                              <span className="text-lg text-gray-400">/100</span>
-                                            </div>
-
-                                            <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                                              <div
-                                                className={`h-2 rounded-full ${
-                                                  score >= 75 ? 'bg-green-600' :
-                                                  score >= 40 ? 'bg-yellow-500' :
-                                                  'bg-red-500'
-                                                }`}
-                                                style={{ width: `${score}%` }}
-                                              ></div>
-                                            </div>
-
-                                            <div className="flex items-center justify-between">
-                                              <span className={`inline-block text-xs font-medium px-2 py-1 rounded ${
-                                                score >= 75 ? 'bg-green-100 text-green-800' :
-                                                score >= 40 ? 'bg-yellow-100 text-yellow-800' :
-                                                'bg-red-100 text-red-800'
-                                              }`}>
-                                                {score >= 75 ? 'High' : score >= 40 ? 'Medium' : 'Low'}
-                                              </span>
-                                              {hasDbTests && test.attemptedAt && (
-                                                <span className="text-[10px] text-gray-400">
-                                                  {new Date(test.attemptedAt).toLocaleDateString()}
-                                                </span>
-                                              )}
-                                            </div>
-
-                                            {/* AI Analysis Tooltip */}
-                                            {isHovered && (
-                                              <div className="absolute z-50 left-0 top-full mt-2 w-96 bg-white rounded-lg shadow-2xl border-2 border-indigo-500 p-4 animate-fadeIn">
-                                                <div className="flex items-start gap-2 mb-3">
-                                                  <div className="w-8 h-8 bg-linear-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center shrink-0">
-                                                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
-                                                    </svg>
-                                                  </div>
-                                                  <div className="flex-1">
-                                                    <h5 className="text-sm font-bold text-gray-900 mb-1">AI-Powered Test Analysis</h5>
-                                                    {hasDbTests && test.topic && (
-                                                      <p className="text-xs text-purple-600 font-medium">Topic: {test.topic}</p>
-                                                    )}
-                                                  </div>
-                                                </div>
-
-                                                {/* Show DB AI insights if available */}
-                                                {hasDbTests && test.aiInsights ? (
-                                                  <div className="bg-gray-50 rounded-lg p-3 max-h-80 overflow-y-auto">
-                                                    <p className="text-xs text-gray-700 whitespace-pre-line leading-relaxed">{test.aiInsights}</p>
-                                                  </div>
-                                                ) : (
-                                                  <div className="bg-gray-50 rounded-lg p-3 max-h-80 overflow-y-auto">
-                                                    <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
-                                                      {getTestAnalysis(subjectNames[key], score, testNum, scores.length, scores)}
-                                                    </pre>
-                                                  </div>
-                                                )}
-
-                                                <div className="mt-3 pt-3 border-t border-gray-200 flex items-center justify-between">
-                                                  <span className="text-xs text-gray-500">
-                                                    {hasDbTests ? '📦 From Database' : '🤖 Generated'} 
-                                                    {hasDbTests && test.difficulty && ` • Difficulty: ${test.difficulty}`}
-                                                  </span>
-                                                  <span className="text-xs font-semibold text-indigo-600">
-                                                    Test {testNum}/{hasDbTests ? dbTests.length : scores.length}
-                                                  </span>
-                                                </div>
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-
-                                    {/* Test Statistics */}
-                                    <div className="mt-6 pt-6 border-t border-gray-200 grid grid-cols-2 md:grid-cols-4 gap-4">
-                                      <div className="text-center">
-                                        <p className="text-xs text-gray-500 mb-1">Average Score</p>
-                                        <p className="text-2xl font-bold text-gray-900">
-                                          {(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1)}
-                                        </p>
-                                      </div>
-                                      <div className="text-center">
-                                        <p className="text-xs text-gray-500 mb-1">Highest Score</p>
-                                        <p className="text-2xl font-bold text-green-600">
-                                          {Math.max(...scores)}
-                                        </p>
-                                      </div>
-                                      <div className="text-center">
-                                        <p className="text-xs text-gray-500 mb-1">Lowest Score</p>
-                                        <p className="text-2xl font-bold text-red-600">
-                                          {Math.min(...scores)}
-                                        </p>
-                                      </div>
-                                      {subject.attendance && (
-                                        <div className="text-center">
-                                          <p className="text-xs text-gray-500 mb-1">Attendance</p>
-                                          <p className={`text-2xl font-bold ${
-                                            subject.attendance.percentage >= 75 ? 'text-green-600' :
-                                            subject.attendance.percentage >= 60 ? 'text-yellow-600' :
-                                            'text-red-600'
-                                          }`}>
-                                            {subject.attendance.percentage}%
-                                          </p>
-                                          <p className="text-xs text-gray-500 mt-1">
-                                            {subject.attendance.attendedClasses}/{subject.attendance.totalClasses}
-                                          </p>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </>
-                                ) : (
-                                  <p className="text-sm text-gray-500">No test history available</p>
-                                );
-                              })()}
-
-                                {/* AI-Generated Topics */}
-                                {subject.conceptsCovered && subject.conceptsCovered.length > 0 && (
-                                  <div className="mt-6 pt-6 border-t border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                                      <svg className="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                                      </svg>
-                                      Topics Covered in Recent Tests
-                                    </h4>
-                                    <div className="flex flex-wrap gap-2">
-                                      {subject.conceptsCovered.map((topic, idx) => (
-                                        <span
-                                          key={idx}
-                                          className="px-3 py-1.5 bg-purple-50 text-purple-700 rounded-full text-sm font-medium border border-purple-200"
-                                        >
-                                          {topic}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* AI Performance Analysis */}
-                                {subject.aiAnalysis && (
-                                  <div className="mt-6 pt-6 border-t border-gray-200">
-                                    <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                                      <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                                      </svg>
-                                      AI Performance Insights
-                                    </h4>
-                                    <div className="bg-linear-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
-                                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-line">
-                                        {subject.aiAnalysis}
-                                      </p>
-                                    </div>
-                                  </div>
-                                )}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
+          const CustomTooltip = ({ active, payload, label }) => {
+            if (active && payload && payload.length) {
+              return (
+                <div className="bg-white shadow-lg rounded-lg border border-gray-200 p-3 text-xs">
+                  <p className="font-bold text-gray-800 mb-1">{label}</p>
+                  {payload.map((entry, i) => (
+                    <p key={i} style={{ color: entry.color }}>
+                      {entry.name}: <span className="font-bold">{entry.value}</span>
+                    </p>
                   ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+                </div>
+              );
+            }
+            return null;
+          };
+
+          return (
+            <>
+              {/* Subject Score Cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mt-6">
+                {subjectEntries.map((s, i) => (
+                  <div key={s.key} className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 text-center">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">{s.fullName}</p>
+                    <p className={`text-3xl font-bold ${
+                      s.current >= 75 ? 'text-green-600' : s.current >= 40 ? 'text-yellow-600' : 'text-red-600'
+                    }`}>{s.current}</p>
+                    <span className={`inline-block mt-1 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${getLevelColor(s.level)}`}>
+                      {s.level}
+                    </span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Charts Row 1: Radar + Bar */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                {/* Radar Chart */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                  <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <Award className="w-4 h-4 text-indigo-600" />
+                    Performance Radar
+                  </h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <RadarChart data={radarData}>
+                      <PolarGrid stroke="#e5e7eb" />
+                      <PolarAngleAxis dataKey="subject" tick={{ fontSize: 12, fill: '#6b7280' }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 100]} tick={{ fontSize: 10 }} />
+                      <Radar name="Score" dataKey="score" stroke="#6366f1" fill="#6366f1" fillOpacity={0.3} strokeWidth={2} />
+                      <Tooltip content={<CustomTooltip />} />
+                    </RadarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Bar Chart: Current vs Average vs Highest */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                  <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-emerald-600" />
+                    Score Comparison
+                  </h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={barData} barCategoryGap="20%">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      <Bar dataKey="current" name="Current" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="average" name="Average" fill="#10b981" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="highest" name="Highest" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Charts Row 2: Line + Pie */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                {/* Line Chart: Test-by-test trend */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                  <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-purple-600" />
+                    Test Score Trends
+                  </h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <LineChart data={lineData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                      <XAxis dataKey="test" tick={{ fontSize: 11 }} />
+                      <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                      <Tooltip content={<CustomTooltip />} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                      {subjectKeys.map((key, i) => (
+                        <Line
+                          key={key}
+                          type="monotone"
+                          dataKey={key}
+                          name={subjectNames[key]?.split(' ').map(w => w[0]).join('') || key.toUpperCase()}
+                          stroke={COLORS[i % COLORS.length]}
+                          strokeWidth={2}
+                          dot={{ r: 4 }}
+                          connectNulls
+                        />
+                      ))}
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Pie Chart: Attendance */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                  <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-cyan-600" />
+                    Attendance Overview
+                  </h3>
+                  <ResponsiveContainer width="100%" height={300}>
+                    <PieChart>
+                      <Pie
+                        data={attendanceData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        paddingAngle={3}
+                        dataKey="value"
+                        label={({ name, value }) => `${name} ${value}%`}
+                      >
+                        {attendanceData.map((entry, i) => (
+                          <Cell key={i} fill={entry.fill} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(val) => `${val}%`} />
+                      <Legend wrapperStyle={{ fontSize: 12 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Per-Subject Detail Cards */}
+              <div className="mt-6">
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                  <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <Award className="w-4 h-4 text-indigo-600" />
+                    Subject Details
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {subjectEntries.map((s, i) => {
+                      const dbTests = seededTests?.[s.key]?.tests;
+                      const scores = dbTests ? dbTests.map(t => t.marks) : (s.history || []);
+                      const avg = scores.length ? +(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : 0;
+                      const att = s.attendance;
+                      return (
+                        <div key={s.key} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div className="flex items-center justify-between mb-3">
+                            <h4 className="text-sm font-semibold text-gray-900">{s.fullName}</h4>
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${getLevelColor(s.level)}`}>{s.level}</span>
+                          </div>
+                          <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                            <div className="bg-gray-50 rounded-lg p-2">
+                              <p className="text-[10px] text-gray-500">Current</p>
+                              <p className={`text-lg font-bold ${s.current >= 75 ? 'text-green-600' : s.current >= 40 ? 'text-yellow-600' : 'text-red-600'}`}>{s.current}</p>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-2">
+                              <p className="text-[10px] text-gray-500">Average</p>
+                              <p className="text-lg font-bold text-gray-800">{avg}</p>
+                            </div>
+                            <div className="bg-gray-50 rounded-lg p-2">
+                              <p className="text-[10px] text-gray-500">Tests</p>
+                              <p className="text-lg font-bold text-gray-800">{scores.length}</p>
+                            </div>
+                          </div>
+                          {/* Mini sparkline bar */}
+                          <div className="flex items-end gap-0.5 h-8">
+                            {scores.map((sc, si) => (
+                              <div
+                                key={si}
+                                className={`flex-1 rounded-t ${sc >= 75 ? 'bg-green-400' : sc >= 40 ? 'bg-yellow-400' : 'bg-red-400'}`}
+                                style={{ height: `${Math.max(4, (sc / 100) * 32)}px` }}
+                                title={`Test ${si + 1}: ${sc}/100`}
+                              />
+                            ))}
+                          </div>
+                          {att && (
+                            <div className="mt-2 flex items-center justify-between text-[10px] text-gray-500">
+                              <span>Attendance: {att.attendedClasses}/{att.totalClasses}</span>
+                              <span className={`font-bold ${att.percentage >= 75 ? 'text-green-600' : att.percentage >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>{att.percentage}%</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </>
+          );
+        })()}
 
         {/* Faculty View */}
         {user.role === 'faculty' && (
@@ -609,6 +446,11 @@ const Dashboard = () => {
           </div>
         )}
       </main>
+
+      {/* AI Chatbot - bottom right corner */}
+      {user.role === 'student' && user._id && (
+        <ChatBot userId={user._id} userName={user.name} />
+      )}
     </div>
   );
 };
