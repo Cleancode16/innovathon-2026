@@ -1,7 +1,44 @@
 const User = require('../models/User');
+const Test = require('../models/Test');
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
 const { seedTestsForUser } = require('../utils/testSeeder');
+
+const SUBJECT_KEYS = ['os', 'cn', 'dbms', 'oops', 'dsa', 'qa'];
+
+/**
+ * Compute fresh subject analytics from Test collection + User.subjects (for attendance).
+ * Returns a clean subjects object with current, history, level, average, attendance, etc.
+ */
+const computeFreshSubjects = async (userId, userSubjects) => {
+  const tests = await Test.find({ user: userId }).sort({ subject: 1, testNumber: 1 });
+  if (!tests || tests.length === 0) return userSubjects || null;
+
+  const freshSubjects = {};
+  for (const key of SUBJECT_KEYS) {
+    const subjectTests = tests.filter(t => t.subject === key);
+    const userSubj = userSubjects?.[key];
+    const scores = subjectTests.length > 0
+      ? subjectTests.map(t => t.marks)
+      : (userSubj?.history || []);
+    const current = scores.length > 0 ? scores[scores.length - 1] : (userSubj?.current || 0);
+    const avg = scores.length > 0
+      ? parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1))
+      : 0;
+    const level = current >= 75 ? 'High' : current >= 40 ? 'Medium' : 'Low';
+
+    freshSubjects[key] = {
+      current,
+      history: scores,
+      level,
+      average: avg,
+      conceptsCovered: userSubj?.conceptsCovered || [],
+      aiAnalysis: userSubj?.aiAnalysis || '',
+      attendance: userSubj?.attendance || { totalClasses: 0, attendedClasses: 0, percentage: 0 }
+    };
+  }
+  return freshSubjects;
+};
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -116,9 +153,33 @@ const login = asyncHandler(async (req, res) => {
     token: generateToken(user._id)
   };
 
-  // Include subjects data for students
-  if (user.role === 'student' && user.subjects) {
-    responseData.subjects = user.subjects;
+  // Include fresh subjects data for students computed from Test collection
+  if (user.role === 'student') {
+    try {
+      // Check if test documents exist; if not, re-seed them
+      const testCount = await Test.countDocuments({ user: user._id });
+      if (testCount === 0) {
+        console.log(`No tests found for user ${user._id}, re-seeding...`);
+        try {
+          const subjectsSummary = await seedTestsForUser(user._id);
+          user.subjects = subjectsSummary;
+          await user.save();
+        } catch (seedErr) {
+          console.error('Re-seeding tests failed:', seedErr.message);
+        }
+      }
+
+      const freshSubjects = await computeFreshSubjects(user._id, user.subjects);
+      if (freshSubjects) {
+        responseData.subjects = freshSubjects;
+      }
+    } catch (err) {
+      console.error('Failed to compute fresh subjects:', err.message);
+      // Fall back to stored user.subjects
+      if (user.subjects) {
+        responseData.subjects = user.subjects;
+      }
+    }
   }
 
   res.status(200).json({

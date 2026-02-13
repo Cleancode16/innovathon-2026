@@ -4,6 +4,8 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Roadmap from './pages/Roadmap';
 import Timetable from './pages/Timetable';
+import Landing from './pages/Landing';
+import Header from './components/Header';
 import { isAuthenticated } from './services/authService';
 
 // Protected Route Component
@@ -14,35 +16,39 @@ const ProtectedRoute = ({ children }) => {
 function App() {
   return (
     <Router>
-      <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route 
-          path="/dashboard" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/roadmap" 
-          element={
-            <ProtectedRoute>
-              <Roadmap />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/timetable" 
-          element={
-            <ProtectedRoute>
-              <Timetable />
-            </ProtectedRoute>
-          } 
-        />
-        <Route path="/" element={<Navigate to="/login" />} />
-      </Routes>
+      <Header />
+      <div className="pt-16">
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/roadmap" 
+            element={
+              <ProtectedRoute>
+                <Roadmap />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/timetable" 
+            element={
+              <ProtectedRoute>
+                <Timetable />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path="/" element={<Landing />} />
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </div>
     </Router>
   );
 }

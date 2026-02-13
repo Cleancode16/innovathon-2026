@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../services/authService';
-import { ArrowLeft, BookOpen, TrendingUp, TrendingDown, Minus, Target, Clock, CheckCircle, AlertTriangle, Zap, ChevronDown, ChevronUp, Loader2, MapPin, Star } from 'lucide-react';
+import { BookOpen, TrendingUp, TrendingDown, Minus, Target, Clock, CheckCircle, AlertTriangle, Zap, ChevronDown, ChevronUp, Loader2, MapPin, Star } from 'lucide-react';
 import axios from 'axios';
 
 const API_URL = 'http://localhost:3000/api';
@@ -121,27 +121,6 @@ const Roadmap = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/dashboard')}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Personalised Roadmap</h1>
-              <p className="text-sm text-gray-500">AI-powered study plan tailored for you</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <MapPin className="w-5 h-5 text-indigo-600" />
-            <span className="text-sm font-medium text-gray-700">{analysis.studentName}</span>
-          </div>
-        </div>
-      </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Overview Cards */}

@@ -29,7 +29,7 @@ const userSchema = new mongoose.Schema({
       message: 'Role must be either student or faculty'
     }
   },
-  // Placement subjects - only for students
+  // Academic subjects - only for students
   subjects: {
     os: {
       current: { type: Number, default: 0, min: 0, max: 100 },

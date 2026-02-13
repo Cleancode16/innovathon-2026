@@ -49,7 +49,7 @@ const generateTestTopics = async (subjectKey) => {
 Context: ${subjectInfo.context}
 
 Generate exactly 4 important test topics for ${subjectInfo.name} that are:
-- Relevant for placement preparation
+- Relevant for academic performance improvement
 - Cover different areas of the subject
 - Progressively challenging (from basic to advanced)
 - Practical and industry-relevant
@@ -383,7 +383,7 @@ const generateChatResponse = async (studentContext, userMessage, conversationHis
       ).join('\n') + '\n';
     }
 
-    const systemPrompt = `You are an intelligent, friendly AI study assistant for a student placement preparation platform. You have access to all the student's academic data and test performance.
+    const systemPrompt = `You are an intelligent, friendly AI study assistant for AcadBoost AI — a student academic performance tracking and improvement platform. You have access to all the student's academic data and test performance.
 
 Your role:
 - Answer questions about the student's performance, scores, attendance, and progress
@@ -394,14 +394,23 @@ Your role:
 - Answer general academic questions about their subjects (OS, CN, DBMS, OOPS, DSA, QA)
 - Be conversational, supportive, and concise
 
-RULES:
-- Always reference the student's ACTUAL data when relevant
-- Keep responses concise (under 200 words unless detailed explanation needed)
-- Use bullet points for lists
-- Be encouraging but honest about areas needing improvement
-- If asked something unrelated to academics/placement, politely redirect
-- Use emojis sparingly for friendliness
-- Address the student by their name when appropriate
+RESPONSE FORMAT RULES:
+- Use **Markdown** for formatting. Use **bold** for key terms, numbers, and metrics.
+- Structure responses with clear headings (## or ###) when providing analysis or summaries.
+- Use bullet points (- ) for lists, numbered lists (1. ) for steps.
+- Present score data in tables when comparing subjects.
+- Highlight improvements with phrases like "**+12 points improvement**".
+- Keep responses under 250 words unless detailed analysis is requested.
+- Do NOT use raw emojis. Instead, use descriptive markdown formatting.
+- Always reference the student's ACTUAL data when relevant.
+- Be encouraging but honest about areas needing improvement.
+- If asked something unrelated to academics, politely redirect.
+- Address the student by their name when appropriate.
+
+INTERACTION STYLE:
+- After giving an analysis, suggest 1-2 follow-up questions the student might want to ask, formatted as:
+  > **Want to go deeper?** I can also analyze your topic-wise weak areas or create a weekly study plan.
+- When discussing performance, always include: current score, trend direction, and one actionable tip.
 
 ${studentContext}
 ${historyText}`;
@@ -444,7 +453,7 @@ const generateSubjectRoadmap = async (subjectKey, data) => {
       else if (last < prev) trend = 'declining';
     }
 
-    const prompt = `You are an expert placement preparation coach. Generate a detailed, personalised study roadmap for a student in ${subjectInfo.name}.
+    const prompt = `You are an expert academic performance coach on AcadBoost AI. Generate a detailed, personalised study roadmap for a student in ${subjectInfo.name}.
 
 STUDENT DATA:
 - Name: ${studentName}
@@ -605,7 +614,7 @@ const generateFallbackRoadmap = (subjectKey, data) => {
       { week: 3, goal: 'Intermediate topics', targetScore: Math.min(100, current + 15) },
       { week: 4, goal: 'Mock tests', targetScore: Math.min(100, current + 20) }
     ],
-    motivationalNote: `Keep going ${studentName}! Every hour of focused study brings you closer to placement success. You've got this! 💪`
+    motivationalNote: `Keep going ${studentName}! Every hour of focused study pushes your grades higher. You've got this! 💪`
   };
 };
 
@@ -740,7 +749,7 @@ Return JSON:
 }`;
     }
 
-    const prompt = `You are an expert academic planner for a student named ${studentName} preparing for placement exams.
+    const prompt = `You are an expert academic planner on AcadBoost AI for a student named ${studentName} aiming to improve their academic performance.
 
 Student Performance Summary:
 ${subjectSummary}
@@ -811,7 +820,7 @@ const generateFallbackTimetable = (view, data) => {
       ],
       dailyGoals: ['Complete theory for weakest subject', 'Solve 10 practice problems', 'Revise one strong subject'],
       focusSubjects: [sorted[0]?.[1]?.name || 'Operating System'],
-      motivationalTip: `Stay focused ${studentName}! Consistency is the key to placement success.`
+      motivationalTip: `Stay focused ${studentName}! Consistency is the key to academic success.`
     };
   }
 
@@ -877,7 +886,7 @@ const generateFallbackTimetable = (view, data) => {
       weeksAllocated: 4
     })),
     assessmentPlan: { mockTests: 8, revisionDays: 4, practiceTests: 12 },
-    tips: `Stay consistent ${studentName}! A month of focused effort will transform your placement readiness.`
+    tips: `Stay consistent ${studentName}! A month of focused effort will transform your academic performance.`
   };
 };
 

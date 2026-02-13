@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getCurrentUser, logout } from '../services/authService';
-import { LogOut, User, Mail, Shield, BookOpen, TrendingUp, Award } from 'lucide-react';
+import { getCurrentUser } from '../services/authService';
+import { User, Mail, Shield, BookOpen, TrendingUp, Award, Loader2 } from 'lucide-react';
 import axios from 'axios';
 import ChatBot from '../components/Chatbot';
 import {
@@ -16,7 +16,9 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [seededTests, setSeededTests] = useState(null);
-  const [loadingTests, setLoadingTests] = useState(false);
+  const [loadingTests, setLoadingTests] = useState(true);
+
+  const SUBJECT_KEYS = ['os', 'cn', 'dbms', 'oops', 'dsa', 'qa'];
 
   useEffect(() => {
     const currentUser = getCurrentUser();
@@ -26,17 +28,68 @@ const Dashboard = () => {
       setUser(currentUser);
       // Fetch seeded tests from the Test collection
       if (currentUser.role === 'student' && currentUser._id) {
-        fetchSeededTests(currentUser._id);
+        fetchSeededTests(currentUser._id, currentUser);
+      } else {
+        setLoadingTests(false);
       }
     }
   }, [navigate]);
 
-  const fetchSeededTests = async (userId) => {
+  const fetchSeededTests = async (userId, currentUser) => {
     setLoadingTests(true);
     try {
-      const response = await axios.get(`${API_URL}/tests/${userId}`);
-      if (response.data.success) {
-        setSeededTests(response.data.data.grouped);
+      let response = await axios.get(`${API_URL}/tests/${userId}`);
+      let grouped = response.data.success ? response.data.data.grouped : {};
+
+      // If no tests exist, trigger a reseed and fetch again
+      if (!grouped || Object.keys(grouped).length === 0) {
+        console.log('No tests found, triggering reseed...');
+        try {
+          const reseedRes = await axios.post(`${API_URL}/tests/${userId}/reseed`);
+          if (reseedRes.data.success) {
+            grouped = reseedRes.data.data.grouped;
+            // If reseed returned updated subjects, use those
+            if (reseedRes.data.data.subjects) {
+              currentUser = { ...currentUser, subjects: reseedRes.data.data.subjects };
+            }
+          }
+        } catch (reseedErr) {
+          console.error('Reseed failed:', reseedErr);
+        }
+      }
+
+      if (grouped && Object.keys(grouped).length > 0) {
+        setSeededTests(grouped);
+
+        // Update user state & localStorage with fresh computed subject data
+        const freshSubjects = {};
+        for (const key of SUBJECT_KEYS) {
+          const userSubj = currentUser.subjects?.[key];
+          const dbTests = grouped?.[key]?.tests;
+          const scores = dbTests ? dbTests.map(t => t.marks) : (userSubj?.history || []);
+          const current = scores.length > 0 ? scores[scores.length - 1] : (userSubj?.current || 0);
+          const avg = scores.length > 0
+            ? parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1))
+            : 0;
+          const level = current >= 75 ? 'High' : current >= 40 ? 'Medium' : 'Low';
+
+          freshSubjects[key] = {
+            current,
+            history: scores,
+            level,
+            average: avg,
+            conceptsCovered: userSubj?.conceptsCovered || [],
+            aiAnalysis: userSubj?.aiAnalysis || '',
+            attendance: userSubj?.attendance || { totalClasses: 0, attendedClasses: 0, percentage: 0 }
+          };
+        }
+
+        // Update user state with fresh subjects
+        const updatedUser = { ...currentUser, subjects: freshSubjects };
+        setUser(updatedUser);
+
+        // Persist to localStorage so other pages (Roadmap, Timetable) also get fresh data
+        localStorage.setItem('user', JSON.stringify(updatedUser));
       }
     } catch (err) {
       console.error('Failed to fetch seeded tests:', err);
@@ -45,10 +98,32 @@ const Dashboard = () => {
     }
   };
 
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
+  // Compute fresh subjects data merging Test API data with user.subjects
+  const subjectsData = useMemo(() => {
+    if (!user) return null;
+    const merged = {};
+    for (const key of SUBJECT_KEYS) {
+      const userSubj = user.subjects?.[key];
+      const dbTests = seededTests?.[key]?.tests;
+      const scores = dbTests ? dbTests.map(t => t.marks) : (userSubj?.history || []);
+      const current = scores.length > 0 ? scores[scores.length - 1] : (userSubj?.current || 0);
+      const avg = scores.length > 0
+        ? parseFloat((scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1))
+        : 0;
+      const level = current >= 75 ? 'High' : current >= 40 ? 'Medium' : 'Low';
+
+      merged[key] = {
+        current,
+        history: scores,
+        level,
+        average: avg,
+        conceptsCovered: userSubj?.conceptsCovered || [],
+        aiAnalysis: userSubj?.aiAnalysis || '',
+        attendance: userSubj?.attendance || { totalClasses: 0, attendedClasses: 0, percentage: 0 }
+      };
+    }
+    return merged;
+  }, [user, seededTests]);
 
   if (!user) return null;
 
@@ -72,45 +147,17 @@ const Dashboard = () => {
     }
   };
 
-  // Calculate average score for students
+  // Calculate average score from merged subjects data
   const calculateAverage = (subjects) => {
     if (!subjects) return 0;
-    const scores = Object.values(subjects).map(subject => subject.current || 0);
-    const sum = scores.reduce((acc, score) => acc + score, 0);
-    return (sum / scores.length).toFixed(2);
+    const vals = Object.values(subjects);
+    if (vals.length === 0) return 0;
+    const sum = vals.reduce((acc, s) => acc + (s.current || 0), 0);
+    return (sum / vals.length).toFixed(2);
   };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => navigate('/timetable')}
-              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
-            >
-              <TrendingUp className="w-4 h-4" />
-              Timetable
-            </button>
-            <button
-              onClick={() => navigate('/roadmap')}
-              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
-            >
-              <BookOpen className="w-4 h-4" />
-              My Roadmap
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -160,14 +207,14 @@ const Dashboard = () => {
           </div>
 
           {/* Statistics Cards - Only for Students */}
-          {user.role === 'student' && user.subjects && (
+          {user.role === 'student' && subjectsData && (
             <>
               <div className="bg-linear-to-br from-indigo-500 to-purple-600 rounded-lg shadow p-6 text-white">
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-sm font-medium opacity-90">Average Score</h3>
                   <TrendingUp className="w-5 h-5 opacity-75" />
                 </div>
-                <p className="text-4xl font-bold">{calculateAverage(user.subjects)}%</p>
+                <p className="text-4xl font-bold">{calculateAverage(subjectsData)}%</p>
                 <p className="text-sm opacity-75 mt-2">Across all subjects</p>
               </div>
 
@@ -176,36 +223,43 @@ const Dashboard = () => {
                   <h3 className="text-sm font-medium opacity-90">Total Subjects</h3>
                   <BookOpen className="w-5 h-5 opacity-75" />
                 </div>
-                <p className="text-4xl font-bold">{Object.keys(user.subjects).length}</p>
-                <p className="text-sm opacity-75 mt-2">Placement subjects</p>
+                <p className="text-4xl font-bold">{Object.keys(subjectsData).length}</p>
+                <p className="text-sm opacity-75 mt-2">Academic subjects</p>
               </div>
             </>
           )}
         </div>
 
-        {/* Charts Section - Only for Students */}
-        {user.role === 'student' && user.subjects && (() => {
-          const COLORS = ['#6366f1', '#10b981', '#8b5cf6', '#f97316', '#ef4444', '#06b6d4'];
-          const subjectKeys = Object.keys(user.subjects);
+        {/* Loading indicator while fetching test data */}
+        {user.role === 'student' && loadingTests && (
+          <div className="flex items-center justify-center py-16">
+            <div className="text-center">
+              <Loader2 className="w-10 h-10 text-indigo-600 animate-spin mx-auto mb-3" />
+              <p className="text-gray-500 text-sm">Loading your test scores...</p>
+            </div>
+          </div>
+        )}
 
-          // Build chart data from user.subjects + seededTests
+        {/* Charts Section - Only for Students */}
+        {user.role === 'student' && !loadingTests && subjectsData && (() => {
+          const COLORS = ['#6366f1', '#10b981', '#8b5cf6', '#f97316', '#ef4444', '#06b6d4'];
+          const subjectKeys = SUBJECT_KEYS;
+
+          // Build chart data from merged subjectsData
           const barData = subjectKeys.map(key => {
-            const s = user.subjects[key];
-            const dbTests = seededTests?.[key]?.tests;
-            const scores = dbTests ? dbTests.map(t => t.marks) : (s.history || []);
-            const avg = scores.length ? +(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : 0;
+            const s = subjectsData[key];
             return {
               name: subjectNames[key]?.split(' ').map(w => w[0]).join('') || key.toUpperCase(),
               fullName: subjectNames[key],
               current: s.current || 0,
-              average: avg,
-              highest: scores.length ? Math.max(...scores) : 0,
-              lowest: scores.length ? Math.min(...scores) : 0,
+              average: s.average || 0,
+              highest: s.history.length ? Math.max(...s.history) : 0,
+              lowest: s.history.length ? Math.min(...s.history) : 0,
             };
           });
 
           const radarData = subjectKeys.map(key => {
-            const s = user.subjects[key];
+            const s = subjectsData[key];
             return {
               subject: key.toUpperCase(),
               score: s.current || 0,
@@ -214,23 +268,18 @@ const Dashboard = () => {
           });
 
           // Line chart: test-by-test trend for each subject
-          const maxTests = Math.max(...subjectKeys.map(key => {
-            const dbTests = seededTests?.[key]?.tests;
-            return dbTests ? dbTests.length : (user.subjects[key]?.history?.length || 0);
-          }), 1);
+          const maxTests = Math.max(...subjectKeys.map(key => subjectsData[key].history.length), 1);
           const lineData = Array.from({ length: maxTests }, (_, i) => {
             const point = { test: `T${i + 1}` };
             subjectKeys.forEach(key => {
-              const dbTests = seededTests?.[key]?.tests;
-              const scores = dbTests ? dbTests.map(t => t.marks) : (user.subjects[key]?.history || []);
-              point[key] = scores[i] ?? null;
+              point[key] = subjectsData[key].history[i] ?? null;
             });
             return point;
           });
 
           // Attendance pie data
           const attendanceData = subjectKeys.map((key, i) => {
-            const att = user.subjects[key]?.attendance;
+            const att = subjectsData[key].attendance;
             return {
               name: key.toUpperCase(),
               value: att?.percentage || 0,
@@ -240,9 +289,8 @@ const Dashboard = () => {
 
           // Subject score cards for quick overview
           const subjectEntries = subjectKeys.map(key => {
-            const s = user.subjects[key];
-            const level = s.current >= 75 ? 'High' : s.current >= 40 ? 'Medium' : 'Low';
-            return { key, ...s, level, fullName: subjectNames[key] };
+            const s = subjectsData[key];
+            return { key, ...s, fullName: subjectNames[key] };
           });
 
           const CustomTooltip = ({ active, payload, label }) => {
@@ -387,9 +435,7 @@ const Dashboard = () => {
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {subjectEntries.map((s, i) => {
-                      const dbTests = seededTests?.[s.key]?.tests;
-                      const scores = dbTests ? dbTests.map(t => t.marks) : (s.history || []);
-                      const avg = scores.length ? +(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : 0;
+                      const scores = s.history || [];
                       const att = s.attendance;
                       return (
                         <div key={s.key} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -404,7 +450,7 @@ const Dashboard = () => {
                             </div>
                             <div className="bg-gray-50 rounded-lg p-2">
                               <p className="text-[10px] text-gray-500">Average</p>
-                              <p className="text-lg font-bold text-gray-800">{avg}</p>
+                              <p className="text-lg font-bold text-gray-800">{s.average}</p>
                             </div>
                             <div className="bg-gray-50 rounded-lg p-2">
                               <p className="text-[10px] text-gray-500">Tests</p>

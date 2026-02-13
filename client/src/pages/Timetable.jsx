@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getCurrentUser } from '../services/authService';
 import {
-  ArrowLeft, Calendar, Clock, BookOpen, Target, Loader2,
+  Calendar, Clock, BookOpen, Target, Loader2,
   Sun, Moon, Coffee, Sunset, ChevronDown, ChevronUp,
   Zap, Star, CheckCircle, BarChart3
 } from 'lucide-react';
@@ -96,28 +96,6 @@ const Timetable = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/dashboard')} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
-            </button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Study Timetable</h1>
-              <p className="text-sm text-gray-500">AI-generated subject-wise schedule</p>
-            </div>
-          </div>
-          <button
-            onClick={refreshTimetable}
-            disabled={isLoading}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 text-sm"
-          >
-            <Zap className="w-4 h-4" />
-            Regenerate
-          </button>
-        </div>
-      </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* View Tabs */}
